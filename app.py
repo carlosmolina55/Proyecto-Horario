@@ -168,33 +168,59 @@ def main():
 
     # --- SIDEBAR GLOBAL ---
     with st.sidebar:
-        st.header("👁️ Modo de Vista")
-        vista_actual = st.radio("Elige una vista:", ["Diaria", "Semanal", "Mensual"], index=0, label_visibility="collapsed")
+        st.header("👁️ Navegación")
+        # Menú ampliado
+        opciones_navegacion = ["Diaria", "Semanal", "Mensual", "---", "➕ Nueva Tarea", "📋 Gestionar Todas"]
+        vista_actual = st.radio("Ir a:", opciones_navegacion, index=0, label_visibility="collapsed")
         
         st.divider()
         st.header("📅 Control de Fecha")
         fecha_seleccionada = st.date_input("Fecha Base", date.today())
         st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b')}**")
+
+    # --- ENRUTADOR DE VISTAS ---
+    if vista_actual == "Diaria":
+        render_vista_diaria(tareas, fecha_seleccionada)
+    elif vista_actual == "Semanal":
+        render_vista_semanal(tareas, fecha_seleccionada)
+    elif vista_actual == "Mensual":
+        render_vista_mensual(tareas, fecha_seleccionada)
+    elif vista_actual == "➕ Nueva Tarea":
+        render_vista_nueva_tarea()
+    elif vista_actual == "📋 Gestionar Todas":
+        render_vista_gestionar_todas(tareas)
+
+# --- IMPLEMENTACIÓN DE VISTAS ---
+
+def render_vista_nueva_tarea():
+    st.subheader("➕ Añadir Nueva Tarea")
+    
+    with st.container(border=True):
+        col_tipo, col_form = st.columns([1, 3])
         
-        st.divider()
-        
-        # --- NUEVA TAREA (SIDEBAR) ---
-        with st.expander("➕ Añadir Tarea", expanded=False):
-            modo_tarea = st.radio("Tipo:", ["📅 Día concreto", "⏰ Deadline"], horizontal=True)
-            with st.form("new_task_sidebar"):
-                tit = st.text_input("Título")
+        with col_tipo:
+            st.info("Configuración Básica")
+            modo_tarea = st.radio("Modo de Tarea", ["📅 Día concreto", "⏰ Deadline"])
+            
+        with col_form:
+            with st.form("form_nueva_tarea_main"):
+                tit = st.text_input("Título de la tarea")
+                
+                c1, c2 = st.columns(2)
                 if "Deadline" in modo_tarea:
-                    f_fin = st.date_input("Deadline", date.today())
+                    f_fin = c1.date_input("Fecha Límite (Deadline)", date.today())
                     f_ini = None
                 else:
-                    f_ini = st.date_input("Fecha", date.today())
+                    f_ini = c1.date_input("Fecha de Realización", date.today())
                     f_fin = None
+                    
+                prio = c2.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
                 
-                c_prio, c_tipo = st.columns(2)
-                prio = c_prio.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
-                tipo = c_tipo.selectbox("Clase", list(COLORES_TIPO.keys())[:-1]) 
+                c3, c4 = st.columns(2)
+                tipo = c3.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1]) # Excluir 'Clase'
                 
-                if st.form_submit_button("Guardar"):
+                st.write("") # Espacio
+                if st.form_submit_button("💾 Guardar Tarea", use_container_width=True, type="primary"):
                     nt = {
                         "id": int(datetime.now().timestamp()), 
                         "titulo": tit, 
@@ -205,59 +231,68 @@ def main():
                         "fecha_fin": str(f_fin) if f_fin else None
                     }
                     gestionar_tareas('crear', nueva_tarea=nt)
-                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada"}
+                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea creada correctamente"}
                     st.rerun()
 
-        # --- GESTIONAR TAREAS (SIDEBAR) ---
-        with st.expander("📋 Gestionar Todas", expanded=False):
-            if not tareas:
-                st.info("No hay tareas.")
-            else:
-                # Mostrar lista compacta
-                for t in tareas:
-                    # Icono de estado
-                    estado_icon = "✅" if t['estado'] == 'Completada' else "⬜"
-                    expander_title = f"{estado_icon} {t['titulo']}"
-                    
-                    with st.expander(expander_title):
-                        with st.form(f"edit_side_{t['id']}"):
-                            e_titulo = st.text_input("Título", t['titulo'])
-                            
-                            es_deadline = t.get('fecha_fin') is not None
-                            if es_deadline:
-                                fecha_actual_obj = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
-                                e_fecha = st.date_input("Deadline", fecha_actual_obj)
-                            else:
-                                fecha_actual_obj = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
-                                e_fecha = st.date_input("Fecha", fecha_actual_obj)
+def render_vista_gestionar_todas(tareas):
+    st.subheader("📋 Gestión Global de Tareas")
+    
+    if not tareas:
+        st.info("No hay tareas registradas. ¡Añade una nueva!")
+        return
 
-                            e_estado = st.selectbox("Estado", ["Pendiente", "Completada"], index=0 if t['estado']=="Pendiente" else 1)
-                            e_prioridad = st.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], index=["Normal", "Importante", "Urgente"].index(t.get('prioridad', 'Normal')))
-                            
-                            if st.form_submit_button("💾 Guardar"):
-                                t['titulo'] = e_titulo
-                                t['estado'] = e_estado
-                                t['prioridad'] = e_prioridad
-                                if es_deadline: t['fecha_fin'] = str(e_fecha)
-                                else: t['fecha'] = str(e_fecha)
-                                gestionar_tareas('actualizar', tarea_actualizada=t)
-                                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "✏️ Actualizado"}
-                                st.rerun()
+    # Filtros simples (opcional para el futuro, por ahora listado limpio)
+    
+    # Grid de tareas
+    for t in tareas:
+        # Icono y Color
+        estado_icon = "✅" if t['estado'] == 'Completada' else "⬜"
+        color_borde = COLORES_PRIORIDAD.get(t.get('prioridad', 'Normal'), "gray")
+        bg_opacity = "0.5" if t['estado'] == 'Completada' else "1"
+        
+        with st.container(border=True):
+            c_main, c_actions = st.columns([5, 1])
+            
+            with c_main:
+                # Título grande
+                st.markdown(f"<h4 style='margin:0; opacity:{bg_opacity}'>{estado_icon} {t['titulo']}</h4>", unsafe_allow_html=True)
+                
+                # Metadatos en linea
+                f_texto = f"📅 {t['fecha']}" if t.get('fecha') else f"⏰ Deadline: {t['fecha_fin']}"
+                st.caption(f"{t['tipo']} | {t['prioridad']} | {f_texto}")
+                
+            with c_actions:
+                # Botón expander para editar
+                with st.popover("✏️ Editar"):
+                    with st.form(f"edit_main_{t['id']}"):
+                        e_titulo = st.text_input("Título", t['titulo'])
                         
-                        if st.button("🗑️ Borrar", key=f"del_side_{t['id']}"):
-                            gestionar_tareas('borrar', id_tarea_eliminar=t['id'])
-                            st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Tarea borrada"}
+                        es_deadline = t.get('fecha_fin') is not None
+                        if es_deadline:
+                            fecha_act = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
+                            e_fecha = st.date_input("Deadline", fecha_act)
+                        else:
+                            fecha_act = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
+                            e_fecha = st.date_input("Fecha", fecha_act)
+
+                        e_estado = st.selectbox("Estado", ["Pendiente", "Completada"], index=0 if t['estado']=="Pendiente" else 1)
+                        e_prioridad = st.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], index=["Normal", "Importante", "Urgente"].index(t.get('prioridad', 'Normal')))
+                        
+                        if st.form_submit_button("Guardar Cambios"):
+                            t['titulo'] = e_titulo
+                            t['estado'] = e_estado
+                            t['prioridad'] = e_prioridad
+                            if es_deadline: t['fecha_fin'] = str(e_fecha)
+                            else: t['fecha'] = str(e_fecha)
+                            gestionar_tareas('actualizar', tarea_actualizada=t)
+                            st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "✏️ Tarea actualizada"}
                             st.rerun()
+                            
+                if st.button("🗑️", key=f"del_main_{t['id']}", help="Borrar tarea"):
+                    gestionar_tareas('borrar', id_tarea_eliminar=t['id'])
+                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Tarea eliminada"}
+                    st.rerun()
 
-    # --- ENRUTADOR DE VISTAS ---
-    if vista_actual == "Diaria":
-        render_vista_diaria(tareas, fecha_seleccionada)
-    elif vista_actual == "Semanal":
-        render_vista_semanal(tareas, fecha_seleccionada)
-    elif vista_actual == "Mensual":
-        render_vista_mensual(tareas, fecha_seleccionada)
-
-# --- IMPLEMENTACIÓN DE VISTAS ---
 
 def render_vista_diaria(tareas, fecha_seleccionada):
     col_horario, col_tareas = st.columns([1, 2])
