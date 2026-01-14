@@ -180,7 +180,7 @@ def main():
         
         # --- NUEVA TAREA (SIDEBAR) ---
         with st.expander("➕ Añadir Tarea", expanded=False):
-            modo_tarea = st.radio("Tipo:", ["� Día concreto", "⏰ Deadline"], horizontal=True)
+            modo_tarea = st.radio("Tipo:", ["📅 Día concreto", "⏰ Deadline"], horizontal=True)
             with st.form("new_task_sidebar"):
                 tit = st.text_input("Título")
                 if "Deadline" in modo_tarea:
@@ -260,7 +260,6 @@ def main():
 # --- IMPLEMENTACIÓN DE VISTAS ---
 
 def render_vista_diaria(tareas, fecha_seleccionada):
-    # Ya no hay tabs, solo el Dashboard directo
     col_horario, col_tareas = st.columns([1, 2])
     
     with col_horario:
@@ -386,48 +385,61 @@ def render_vista_semanal(tareas, fecha_base):
 def render_vista_mensual(tareas, fecha_base):
     st.subheader(f"Vista Mensual - {fecha_base.strftime('%B %Y')}")
     
+    # Asegurar Lunes como primer día
+    calendar.setfirstweekday(calendar.MONDAY)
     cal = calendar.monthcalendar(fecha_base.year, fecha_base.month)
     
     dias_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
     
+    # Cabecera
     cols_header = st.columns(7)
     for i, d in enumerate(dias_semana):
-        cols_header[i].markdown(f"<div style='text-align:center; opacity:0.7'><strong>{d}</strong></div>", unsafe_allow_html=True)
+        cols_header[i].markdown(f"<div style='text-align:center; border-bottom: 2px solid #555; margin-bottom:5px; opacity: 0.8;'><strong>{d}</strong></div>", unsafe_allow_html=True)
         
     for week in cal:
         cols = st.columns(7)
         for i, day_num in enumerate(week):
             with cols[i]:
+                
                 if day_num == 0:
-                    st.markdown("<div style='height:80px;'></div>", unsafe_allow_html=True)
-                    continue
-                
-                dia_actual = date(fecha_base.year, fecha_base.month, day_num)
-                is_today = dia_actual == date.today()
-                
-                # Estilo Transparente (Minimalista)
-                # Solo marcamos 'Hoy' con un borde o un estilo sutil
-                style_today = "border: 2px solid #ff4b4b; border-radius: 5px;" if is_today else "border-top: 1px solid #333;"
-                
-                st.markdown(f"<div style='{style_today} padding:4px; height:80px; overflow-y:auto;'>", unsafe_allow_html=True)
-                st.markdown(f"<strong style='opacity:0.8'>{day_num}</strong>", unsafe_allow_html=True)
-                
-                # Tareas (Puntos)
-                html_dots = ""
-                for t in tareas:
-                    if t.get('estado') == 'Completada': continue
-                    fecha_t = t.get('fecha')
-                    fecha_f = t.get('fecha_fin')
+                    st.markdown("<div style='height:100px; opacity:0.1; background-color:#333'></div>", unsafe_allow_html=True)
+                else:
+                    dia_actual = date(fecha_base.year, fecha_base.month, day_num)
+                    is_today = dia_actual == date.today()
                     
-                    color = COLORES_TIPO.get(t.get('tipo'), "gray")
+                    # Estilo contenedor día
+                    border_style = "2px solid red" if is_today else "1px solid #444" 
+                    bg_date = "rgba(40,40,40,0.5)"
                     
-                    if fecha_t == str(dia_actual) and not fecha_f:
-                         html_dots += f"<div style='background-color:{color}; width:8px; height:8px; border-radius:50%; display:inline-block; margin:2px;' title='📅 {t['titulo']}'></div>"
-                    elif fecha_f == str(dia_actual):
-                         html_dots += f"<div style='border: 2px solid {color}; width:8px; height:8px; border-radius:50%; display:inline-block; margin:2px;' title='⏰ {t['titulo']}'></div>"
+                    st.markdown(f"<div style='min-height: 120px; border: {border_style}; background-color: {bg_date}; border-radius: 4px; padding: 4px; margin-bottom: 4px;'>", unsafe_allow_html=True)
+                    
+                    # Número del día
+                    color_num = "red" if is_today else "#ccc"
+                    st.markdown(f"<div style='text-align: right; color: {color_num}; font-weight: bold; margin-bottom: 2px;'>{day_num}</div>", unsafe_allow_html=True)
+                    
+                    # 1. Horario
+                    clases = HORARIO_FIJO.get(i, [])
+                    for c in clases:
+                        st.markdown(f"<div style='background-color: {COLORES_TIPO['Clase']}; color: white; padding: 2px 4px; border-radius: 4px; margin: 1px 0; font-size: 0.65em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;'>🏫 {c['asignatura']}</div>", unsafe_allow_html=True)
+                    
+                    # 2. Tareas
+                    for t in tareas:
+                        if t.get('estado') == 'Completada': continue
+                        
+                        fecha_t = t.get('fecha')
+                        fecha_f = t.get('fecha_fin')
+                        
+                        # Tarea Día
+                        if fecha_t == str(dia_actual) and not fecha_f:
+                            color = COLORES_TIPO.get(t.get('tipo'), "gray")
+                            st.markdown(f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 4px; margin: 1px 0; font-size: 0.7em;'>📅 {t['titulo'][:15]}...</div>", unsafe_allow_html=True)
+                        
+                        # Deadline
+                        if fecha_f == str(dia_actual):
+                            color = COLORES_TIPO.get(t.get('tipo'), "gray")
+                            st.markdown(f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 4px; margin: 1px 0; font-size: 0.7em;'>⏰ {t['titulo'][:15]}...</div>", unsafe_allow_html=True)
                 
-                st.markdown(html_dots, unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
