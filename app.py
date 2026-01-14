@@ -2,9 +2,19 @@ import streamlit as st
 from github import Github, GithubException
 import json
 import pandas as pd
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 import calendar
 import pytz
+import os
+
+# --- LIBRARIES FOR SCRAPING ---
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+import time as time_lib
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
@@ -13,12 +23,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CONFIGURACIÓN DE ZONA HORARIA ---
-TZ_MADRID = pytz.timezone('Europe/Madrid')
+# --- CONSTANTES ---
+FILE_PATH = "tareas.json"
+REPO_NAME = "MrCordobex/Personal-project"
+TIMEZONE = pytz.timezone("Europe/Madrid")
+HORARIO_FILE = "horario_clases.json" # Archivo local/remoto para clases scrapeadas
 
 def get_madrid_time():
-    """Devuelve la fecha y hora actual en Madrid"""
-    return datetime.now(TZ_MADRID)
+    return datetime.now(TIMEZONE)
 
 def get_madrid_date():
     """Devuelve la fecha actual en Madrid"""
@@ -29,27 +41,6 @@ def get_madrid_date():
 REPO_NAME = "MrCordobex/Personal-project"  # <-- ¡ACTUALIZA ESTO CON TU REPO!
 FILE_PATH = "tareas.json"
 
-# --- ESTRUCTURA DE HORARIO FIJO (Editable) ---
-# Adapta esto con tus asignaturas reales
-HORARIO_FIJO = {
-    0: [ # Lunes
-        {"hora": "09:00 - 11:00", "asignatura": "Desarrollo Web", "aula": "1.4"},
-        {"hora": "11:30 - 13:30", "asignatura": "Bases de Datos", "aula": "2.1"},
-    ],
-    1: [ # Martes
-        {"hora": "09:00 - 11:00", "asignatura": "Inteligencia Artificial", "aula": "1.4"},
-    ],
-    2: [ # Miércoles
-        {"hora": "10:00 - 12:00", "asignatura": "Redes de Computadores", "aula": "Lab 3"},
-    ],
-    3: [ # Jueves
-        {"hora": "09:00 - 11:00", "asignatura": "Desarrollo Web", "aula": "1.4"},
-        {"hora": "15:00 - 17:00", "asignatura": "Ingeniería Software", "aula": "2.2"},
-    ],
-    4: [ # Viernes
-        {"hora": "09:00 - 11:00", "asignatura": "Inglés Técnico", "aula": "Online"},
-    ],
-    5: [], # Sábado
     6: []  # Domingo
 }
 
@@ -543,26 +534,118 @@ def render_tarjeta_gestion(t):
                 st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Tarea eliminada"}
                 st.rerun()
 
+# --- UI Y LÓGICA ---
 
-def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico):
+def main():
+    st.title("🎓 Academic Task Planner")
+
+    # --- NOTIFICACIONES GLOBLALES ---
+    if "mensaje_global" in st.session_state and st.session_state["mensaje_global"]:
+        tipo = st.session_state["mensaje_global"]["tipo"]
+        texto = st.session_state["mensaje_global"]["texto"]
+        if tipo == "exito":
+            st.success(texto)
+        elif tipo == "error":
+            st.error(texto)
+        st.session_state["mensaje_global"] = None
+        
+    # --- AUTO-UPDATE HORARIO CLASES ---
+    with st.spinner("Sincronizando horario universitario..."):
+        horario_clases_scraped = actualizar_horario_clases()
+       
+    # --- GESTOR DE DATOS (PERSISTENCIA) ---
+    tareas = gestionar_tareas('leer')
+    horario_dinamico = gestionar_horario('leer')
+    
+    # --- LIMPIEZA AUTOMÁTICA ---
+    hoy_real = get_madrid_date()
+    tareas_filtradas = []
+    hubo_cambios_limpieza = False
+    
+    for t in tareas:
+        # Si es completada y vieja, fuera
+        es_vieja = False
+        try:
+            if t.get('fecha'):
+                f_t = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
+                if f_t < hoy_real: es_vieja = True
+            if t.get('fecha_fin'): # Si tiene deadline y ya pasó hace tiempo también
+                f_f = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
+                if f_f < hoy_real: es_vieja = True
+        except: pass
+            
+        if t['estado'] == 'Completada' and es_vieja:
+            # Solo borrar si ya pasó el día
+             hubo_cambios_limpieza = True
+        else:
+            tareas_filtradas.append(t)
+            
+    if hubo_cambios_limpieza:
+        if gestionar_tareas('guardar_todo', lista_completa=tareas_filtradas):
+            st.toast("🧹 Se han eliminado tareas antiguas automáticamente.")
+            tareas = tareas_filtradas
+
+    # --- SIDEBAR GLOBAL ---
+    with st.sidebar:
+        st.header("👁️ Navegación")
+        # Menú ampliado
+        opciones_navegacion = ["Diaria", "Semanal", "Mensual", "---", "➕ Nueva Tarea", "➕ Nuevo Evento/Horario", "📋 Gestionar Todas"]
+        vista_actual = st.radio("Ir a:", opciones_navegacion, index=0, label_visibility="collapsed")
+        
+        st.divider()
+        st.header("📅 Control de Fecha")
+        fecha_seleccionada = st.date_input("Fecha Base", get_madrid_date())
+        st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b')}**")
+        
+        if st.button("🔄 Forzar Scrapeo Horario"):
+            actualizar_horario_clases(force=True)
+            st.rerun()
+
+    # --- ENRUTADOR DE VISTAS ---
+    if vista_actual == "Diaria":
+        render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_clases_scraped)
+    elif vista_actual == "Semanal":
+        render_vista_semanal(tareas, fecha_seleccionada, horario_dinamico, horario_clases_scraped)
+    elif vista_actual == "Mensual":
+        render_vista_mensual(tareas, fecha_seleccionada, horario_dinamico, horario_clases_scraped)
+    elif vista_actual == "➕ Nueva Tarea":
+        render_vista_nueva_tarea()
+    elif vista_actual == "➕ Nuevo Evento/Horario":
+        render_vista_nuevo_horario()
+    elif vista_actual == "📋 Gestionar Todas":
+        render_vista_gestionar_todas(tareas)
+
+# --- IMPLEMENTACIÓN DE VISTAS ---
+
+def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_clases_scraped):
     col_horario, col_tareas = st.columns([1, 2])
     
     with col_horario:
         st.subheader("🏫 Horario")
         dia_semana = fecha_seleccionada.weekday()
         
-        # 1. Clases Fijas (Hardcoded)
-        clases_hoy = HORARIO_FIJO.get(dia_semana, [])
+        # Recolectar items del dia
+        clases_hoy = []
+        
+        # 1. Clases Scrapeadas (Fecha exacta)
+        fecha_sel_str = str(fecha_seleccionada)
+        for c in horario_clases_scraped:
+            if c['fecha'] == fecha_sel_str:
+                clases_hoy.append({
+                    "hora": c['hora'],
+                    "asignatura": c['asignatura'],
+                    "aula": c['aula'],
+                    "es_universidad": True
+                })
         
         # 2. Horario Dinámico (JSON)
-        # Rutinas de este dia o Eventos de esta fecha
         for item in horario_dinamico:
             es_hoy = False
             if item.get('es_rutina'):
                 if dia_semana in item.get('dias_semana', []):
                     es_hoy = True
             else:
-                if item.get('fecha') == str(fecha_seleccionada):
+                if item.get('fecha') == fecha_sel_str:
                     es_hoy = True
             
             if es_hoy:
@@ -570,16 +653,22 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico):
                     "hora": f"{item['hora_inicio']} - {item['hora_fin']}",
                     "asignatura": item['titulo'],
                     "aula": item['ubicacion'],
-                    "es_dinamico": True # Flag por si queremos pintar distinto
+                    "es_dinamico": True
                 })
         
         # Ordenar por hora inicio
-        clases_hoy.sort(key=lambda x: x['hora'].split(' - ')[0])
+        def sort_hora(x):
+            try:
+                return x['hora'].split('-')[0].strip()
+            except: return "23:59"
+            
+        clases_hoy.sort(key=sort_hora)
 
         if clases_hoy:
             for clase in clases_hoy:
-                bg_style = "border: 1px solid #444" if clase.get('es_dinamico') else "" # Diferenciar visualmente? De momento sutil
-                st.success(f"**{clase['hora']}**\n\n{clase['asignatura']}\n\n📍 {clase['aula']}")
+                # Estilo diferente para Universidad vs Dinamico
+                icon = "🎓" if clase.get('es_universidad') else "🏋️" if "gym" in clase['asignatura'].lower() else "📅"
+                st.success(f"**{clase['hora']}**\n\n{icon} {clase['asignatura']}\n\n📍 {clase['aula']}")
         else:
             st.info("No hay clases ni eventos programados.")
     
@@ -678,7 +767,7 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico):
                         else:
                             c2.write("✅")
 
-def render_vista_semanal(tareas, fecha_base, horario_dinamico):
+def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_scraped):
     st.subheader(f"Vista Semanal")
     
     start_of_week = fecha_base - timedelta(days=fecha_base.weekday())
@@ -715,16 +804,16 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico):
             # --- RECOLECCIÓN DE ITEMS ---
             items_visuales = []
             
-            # 1. Horario Fijo
-            clases_fijas = HORARIO_FIJO.get(i, [])
-            for c in clases_fijas:
-                 items_visuales.append({
-                     "tipo": "clase",
-                     "titulo": c['asignatura'],
-                     "hora_sort": c['hora'].split('-')[0].strip(), # "09:00"
-                     "html_extra": "",
-                     "bg_color": COLORES_TIPO['Clase']
-                 })
+            # 1. Horario Universitario Scrapeado
+            dia_str = str(dia_actual)
+            for c in horario_clases_scraped:
+                if c['fecha'] == dia_str:
+                     items_visuales.append({
+                         "tipo": "clase",
+                         "titulo": c['asignatura'],
+                         "hora_sort": c['hora'].split('-')[0].strip(), # "09:00"
+                         "bg_color": COLORES_TIPO['Clase']
+                     })
                  
             # 2. Horario Dinamico
             for item in horario_dinamico:
@@ -732,14 +821,13 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico):
                 if item.get('es_rutina'):
                      if i in item.get('dias_semana', []): es_este_dia = True
                 else:
-                     if item.get('fecha') == str(dia_actual): es_este_dia = True
+                     if item.get('fecha') == dia_str: es_este_dia = True
                 
                 if es_este_dia:
                     items_visuales.append({
                         "tipo": "evento",
                         "titulo": item['titulo'],
                         "hora_sort": item['hora_inicio'],
-                        "html_extra": "",
                         "bg_color": "#2E8B57"
                     })
             
@@ -809,7 +897,7 @@ NOMBRES_MESES = {
 }
 DIAS_SEMANA_ABR = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
-def render_vista_mensual(tareas, fecha_base, horario_dinamico):
+def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_scraped):
     nombre_mes = NOMBRES_MESES.get(fecha_base.month, "Mes")
     st.subheader(f"Vista Mensual - {nombre_mes} {fecha_base.year}")
     
@@ -865,16 +953,17 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico):
                 
                 # --- RECOLECCIÓN DE ITEMS (Igual que semanal) ---
                 items_visuales = []
+                dia_str = str(dia_actual)
                 
-                # 1. Clases Fijas
-                clases_fijas = HORARIO_FIJO.get(i, [])
-                for c in clases_fijas:
-                     items_visuales.append({
-                         "tipo": "clase",
-                         "titulo": c['asignatura'],
-                         "hora_sort": c['hora'].split('-')[0].strip(),
-                         "bg_color": COLORES_TIPO['Clase']
-                     })
+                # 1. Clases Scrapeadas
+                for c in horario_clases_scraped:
+                     if c['fecha'] == dia_str:
+                        items_visuales.append({
+                            "tipo": "clase",
+                            "titulo": c['asignatura'],
+                            "hora_sort": c['hora'].split('-')[0].strip(),
+                            "bg_color": COLORES_TIPO['Clase']
+                        })
 
                 # 2. Horario Dinamico
                 for item in horario_dinamico:
@@ -882,7 +971,7 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico):
                     if item.get('es_rutina'):
                          if i in item.get('dias_semana', []): es_este_dia_m = True
                     else:
-                         if item.get('fecha') == str(dia_actual): es_este_dia_m = True
+                         if item.get('fecha') == dia_str: es_este_dia_m = True
                     
                     if es_este_dia_m:
                         items_visuales.append({

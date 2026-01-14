@@ -2,3 +2,6 @@ streamlit
 PyGithub
 pandas
 pytz
+selenium
+webdriver-manager
+pandas
