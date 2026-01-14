@@ -158,7 +158,7 @@ def main():
     tareas = gestionar_tareas('leer')
     
     # --- LIMPIEZA AUTOMÁTICA ---
-    hoy_real = date.today()
+    hoy_real = get_madrid_date()
     tareas_filtradas = []
     hubo_cambios_limpieza = False
     
@@ -187,7 +187,7 @@ def main():
         
         st.divider()
         st.header("📅 Control de Fecha")
-        fecha_seleccionada = st.date_input("Fecha Base", date.today())
+        fecha_seleccionada = st.date_input("Fecha Base", get_madrid_date())
         st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b')}**")
 
     # --- ENRUTADOR DE VISTAS ---
@@ -220,10 +220,10 @@ def render_vista_nueva_tarea():
                 
                 c1, c2 = st.columns(2)
                 if "Deadline" in modo_tarea:
-                    f_fin = c1.date_input("Fecha Límite (Deadline)", date.today())
+                    f_fin = c1.date_input("Fecha Límite (Deadline)", get_madrid_date())
                     f_ini = None
                 else:
-                    f_ini = c1.date_input("Fecha de Realización", date.today())
+                    f_ini = c1.date_input("Fecha de Realización", get_madrid_date())
                     f_fin = None
                     
                 prio = c2.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
@@ -234,12 +234,12 @@ def render_vista_nueva_tarea():
                 st.write("") # Espacio
                 if st.form_submit_button("💾 Guardar Tarea", use_container_width=True, type="primary"):
                     nt = {
-                        "id": int(datetime.now().timestamp()), 
+                        "id": int(get_madrid_time().timestamp()), 
                         "titulo": tit, 
                         "prioridad": prio, 
                         "tipo": tipo, 
                         "estado": "Pendiente", 
-                        "fecha": str(f_ini) if f_ini else str(date.today()), 
+                        "fecha": str(f_ini) if f_ini else str(get_madrid_date()), 
                         "fecha_fin": str(f_fin) if f_fin else None
                     }
                     gestionar_tareas('crear', nueva_tarea=nt)
@@ -326,12 +326,12 @@ def render_tarjeta_gestion(t):
                     if es_deadline:
                         try:
                             fecha_base = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
-                        except: fecha_base = date.today()
+                        except: fecha_base = get_madrid_date()
                         e_fecha = st.date_input("Deadline", fecha_base)
                     else:
                         try:
                             fecha_base = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
-                        except: fecha_base = date.today()
+                        except: fecha_base = get_madrid_date()
                         e_fecha = st.date_input("Fecha", fecha_base)
 
                     e_estado = st.selectbox("Estado", ["Pendiente", "Completada"], index=0 if t['estado']=="Pendiente" else 1)
@@ -371,7 +371,7 @@ def render_vista_diaria(tareas, fecha_seleccionada):
         
         tareas_hoy_list = []
         tareas_proximas_list = []
-        hoy_real = date.today()
+        hoy_real = get_madrid_date()
 
         for t in tareas:
             if t.get('estado') == 'Completada' and t.get('fecha') != str(fecha_seleccionada) and t.get('fecha_fin') != str(fecha_seleccionada):
@@ -450,7 +450,7 @@ def render_vista_semanal(tareas, fecha_base):
     
     for i, col in enumerate(cols):
         dia_actual = start_of_week + timedelta(days=i)
-        is_today = dia_actual == date.today()
+        is_today = dia_actual == get_madrid_date()
         is_selected = dia_actual == fecha_base
         
         # Estilo Header
@@ -524,7 +524,7 @@ def render_vista_mensual(tareas, fecha_base):
                     continue
                 
                 dia_actual = date(fecha_base.year, fecha_base.month, day_num)
-                is_today = dia_actual == date.today()
+                is_today = dia_actual == get_madrid_date()
                 is_selected = dia_actual == fecha_base
                 
                 # Definir colores y bordes
