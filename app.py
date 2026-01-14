@@ -225,11 +225,21 @@ def render_vista_nueva_tarea():
                 else:
                     f_ini = c1.date_input("Fecha de Realización", get_madrid_date())
                     f_fin = None
-                    
-                prio = c2.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
                 
-                c3, c4 = st.columns(2)
-                tipo = c3.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1]) # Excluir 'Clase'
+                # --- NUEVO: HORA ---
+                c_hora_1, c_hora_2 = c1.columns([1, 2]) if "Deadline" not in modo_tarea else (None, None) 
+                # Solo mostrar hora para fecha concreta (aunque para deadline tambien podria servir, lo pondremos en los dos para consistencia si el usuario quiere)
+                
+                # Mejor lo ponemos en una fila nueva para que quepa bien
+                
+                chk_dia_completo = c2.checkbox("📅 Todo el día", value=True)
+                hora_seleccionada = None
+                
+                if not chk_dia_completo:
+                    hora_seleccionada = c2.time_input("Hora", datetime.now().time())
+                
+                prio = c1.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
+                tipo = c2.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1]) # Excluir 'Clase'
                 
                 st.write("") # Espacio
                 if st.form_submit_button("💾 Guardar Tarea", use_container_width=True, type="primary"):
@@ -240,10 +250,12 @@ def render_vista_nueva_tarea():
                         "tipo": tipo, 
                         "estado": "Pendiente", 
                         "fecha": str(f_ini) if f_ini else str(get_madrid_date()), 
-                        "fecha_fin": str(f_fin) if f_fin else None
+                        "fecha_fin": str(f_fin) if f_fin else None,
+                        "dia_completo": chk_dia_completo,
+                        "hora": str(hora_seleccionada.strftime("%H:%M")) if hora_seleccionada else None
                     }
                     gestionar_tareas('crear', nueva_tarea=nt)
-                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea creada correctamente"}
+                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada"}
                     st.rerun()
 
 def render_vista_gestionar_todas(tareas):
@@ -302,7 +314,12 @@ def render_tarjeta_gestion(t):
         
         with c_main:
             # Título grande
-            st.markdown(f"<h4 style='margin:0; opacity:{bg_opacity}'>{estado_icon} {t['titulo']}</h4>", unsafe_allow_html=True)
+            # Mostrar hora si existe
+            hora_str = ""
+            if not t.get('dia_completo', True) and t.get('hora'):
+                hora_str = f"🕒 {t['hora']} - "
+                
+            st.markdown(f"<h4 style='margin:0; opacity:{bg_opacity}'>{estado_icon} {hora_str}{t['titulo']}</h4>", unsafe_allow_html=True)
             
             # Determinamos qué fecha mostrar
             # Si tiene fecha_fin, es un Deadline. Si no, es fecha fija.
@@ -337,6 +354,7 @@ def render_tarjeta_gestion(t):
                 with st.form(f"edit_main_{t['id']}"):
                     e_titulo = st.text_input("Título", t['titulo'])
                     
+                    # FECHAS
                     es_deadline = t.get('fecha_fin') is not None
                     if es_deadline:
                         try:
@@ -348,6 +366,16 @@ def render_tarjeta_gestion(t):
                             fecha_base = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
                         except: fecha_base = get_madrid_date()
                         e_fecha = st.date_input("Fecha", fecha_base)
+                    
+                    # HORA
+                    e_dia_completo = st.checkbox("📅 Todo el día", value=t.get('dia_completo', True))
+                    e_hora = None
+                    if not e_dia_completo:
+                        try:
+                            hora_default = datetime.strptime(t.get('hora', "09:00"), "%H:%M").time()
+                        except: hora_default = datetime.now().time()
+                        e_hora_input = st.time_input("Hora", hora_default)
+                        e_hora = e_hora_input.strftime("%H:%M")
 
                     e_estado = st.selectbox("Estado", ["Pendiente", "Completada"], index=0 if t['estado']=="Pendiente" else 1)
                     e_prioridad = st.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], index=["Normal", "Importante", "Urgente"].index(t.get('prioridad', 'Normal')))
@@ -356,6 +384,9 @@ def render_tarjeta_gestion(t):
                         t['titulo'] = e_titulo
                         t['estado'] = e_estado
                         t['prioridad'] = e_prioridad
+                        t['dia_completo'] = e_dia_completo
+                        t['hora'] = e_hora
+                        
                         if es_deadline: t['fecha_fin'] = str(e_fecha)
                         else: t['fecha'] = str(e_fecha)
                         gestionar_tareas('actualizar', tarea_actualizada=t)
@@ -421,14 +452,29 @@ def render_vista_diaria(tareas, fecha_seleccionada):
             st.info("✅ Nada pendiente para hoy.")
 
         if tareas_hoy_list:
+            # Ordenar por hora si no es día completo
+            def sort_key_daily(x):
+                # 1. Dia completo primero (o ultimo? mejor primero como "todo el dia") -> False (0) vs True (1)
+                # 2. Hora
+                is_all_day = x.get('dia_completo', True)
+                hora = x.get('hora', "23:59")
+                return (0 if is_all_day else 1, hora)
+            
+            tareas_hoy_list.sort(key=sort_key_daily)
+
             st.markdown("### 📅 Tareas del Día")
             for t in tareas_hoy_list:
                 color = COLORES_TIPO.get(t['tipo'], "gray")
                 estilo_completada = "opacity: 0.5;" if t['estado'] == 'Completada' else ""
                 
+                # Texto Hora
+                hora_txt = ""
+                if not t.get('dia_completo', True) and t.get('hora'):
+                    hora_txt = f"**{t['hora']}** | "
+                
                 with st.container(border=True):
                         c1, c2 = st.columns([4, 1])
-                        c1.markdown(f"<div style='{estilo_completada}'><strong>{t['titulo']}</strong> <span style='background-color:{color}; padding: 2px 6px; border-radius: 4px; color: white; font-size: 0.8em'>{t['tipo']}</span></div>", unsafe_allow_html=True)
+                        c1.markdown(f"<div style='{estilo_completada}'>{hora_txt}<strong>{t['titulo']}</strong> <span style='background-color:{color}; padding: 2px 6px; border-radius: 4px; color: white; font-size: 0.8em'>{t['tipo']}</span></div>", unsafe_allow_html=True)
                         if t['estado'] != 'Completada':
                             if c2.button("✅", key=f"d_{t['id']}"):
                                 t['estado'] = 'Completada'
@@ -444,9 +490,14 @@ def render_vista_diaria(tareas, fecha_seleccionada):
                 urgency_icon = "🔥" if t['urgente'] else "⏰"
                 estilo_completada = "opacity: 0.5;" if t['estado'] == 'Completada' else ""
                 
+                # Texto Hora (para deadlines)
+                hora_txt = ""
+                if not t.get('dia_completo', True) and t.get('hora'):
+                    hora_txt = f" @ {t['hora']}"
+                
                 with st.container(border=True):
                         c1, c2 = st.columns([4, 1])
-                        c1.markdown(f"<div style='{estilo_completada}'>{urgency_icon} <strong>{t['titulo']}</strong> | {t['msg']}</div>", unsafe_allow_html=True) 
+                        c1.markdown(f"<div style='{estilo_completada}'>{urgency_icon} <strong>{t['titulo']}</strong>{hora_txt} | {t['msg']}</div>", unsafe_allow_html=True) 
                         c1.caption(f"Tipo: {t['tipo']}")
                         if t['estado'] != 'Completada':
                             if c2.button("✅", key=f"d_p_{t['id']}"):
@@ -502,13 +553,18 @@ def render_vista_semanal(tareas, fecha_base):
                 fecha_t = t.get('fecha')
                 fecha_f = t.get('fecha_fin')
                 
+                # Logica visual hora
+                hora_short = ""
+                if not t.get('dia_completo', True) and t.get('hora'):
+                    hora_short = f"{t['hora']} "
+                
                 if fecha_t == str(dia_actual) and not fecha_f:
                     color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                    st.markdown(f"<div style='background-color: {color}; color: white; padding: 4px; border-radius: 4px; margin: 2px 0; font-size: 0.7em'>📅 {t['titulo']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background-color: {color}; color: white; padding: 4px; border-radius: 4px; margin: 2px 0; font-size: 0.7em'>📅 {hora_short}{t['titulo']}</div>", unsafe_allow_html=True)
                 
                 if fecha_f == str(dia_actual):
                     color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                    st.markdown(f"<div style='border: 2px solid {color}; color: white; padding: 3px; border-radius: 4px; margin: 2px 0; font-size: 0.7em'>⏰ {t['titulo']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='border: 2px solid {color}; color: white; padding: 3px; border-radius: 4px; margin: 2px 0; font-size: 0.7em'>⏰ {hora_short}{t['titulo']}</div>", unsafe_allow_html=True)
 
 # --- CONSTANTES DE FECHA (ESPAÑOL) ---
 NOMBRES_MESES = {
@@ -602,15 +658,20 @@ def render_vista_mensual(tareas, fecha_base):
                     
                     titulo_corto = (t['titulo'][:12] + '..') if len(t['titulo']) > 12 else t['titulo']
                     
+                    # Logica visual hora
+                    hora_short = ""
+                    if not t.get('dia_completo', True) and t.get('hora'):
+                        hora_short = f"{t['hora']} "
+                    
                     # Tarea de Día
                     if fecha_t == str(dia_actual) and not fecha_f:
                         color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                        html_celda += f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>📅 {titulo_corto}</div>"
+                        html_celda += f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>📅 {hora_short}{titulo_corto}</div>"
                     
                     # Deadline
                     if fecha_f == str(dia_actual):
                         color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                        html_celda += f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>⏰ {titulo_corto}</div>"
+                        html_celda += f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>⏰ {hora_short}{titulo_corto}</div>"
                 
                 html_celda += "</div>"
                 
