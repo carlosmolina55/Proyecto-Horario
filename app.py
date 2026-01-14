@@ -168,38 +168,43 @@ def main():
             tareas_hoy_list = []
             tareas_proximas_list = []
             
-            # Fecha de referencia para cálculos (usamos fecha seleccionada o 'hoy' real para urgencia?)
-            # El usuario navega con 'fecha_seleccionada', pero la urgencia ("quedan X días") 
-            # suele ser relativa a la FECHA ACTUAL REAL, no a la fecha que estás mirando en el calendario.
-            # Asumiremos HOY REAL para el cálculo de "quedan días" y urgencia.
             hoy_real = date.today()
 
             for t in tareas:
                 if t.get('estado') == 'Completada':
                     continue
                 
-                # Calcular datos derivados
+                # --- NUEVA LÓGICA DE MODOS ---
+                es_task_deadline = t.get('fecha_fin') is not None
+                
+                # Inicializar variables visuales
                 es_urgente_auto = False
                 dias_restantes_msg = ""
                 delta_dias = 999
                 
-                if t.get('fecha_fin'):
+                if es_task_deadline:
+                    # Lógica para tareas con DEADLINE
                     try:
                         d_fin = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
                         delta_dias = (d_fin - hoy_real).days
                         
                         if delta_dias < 0:
                             dias_restantes_msg = f"🔴 Venció hace {abs(delta_dias)} días"
+                            es_urgente_auto = True
                         elif delta_dias == 0:
                             dias_restantes_msg = "🟠 Vence HOY"
-                            es_urgente_auto = True # Vence hoy -> Urgente
+                            es_urgente_auto = True
                         else:
                             dias_restantes_msg = f"⏳ Quedan {delta_dias} días"
                             if delta_dias < 2:
                                 es_urgente_auto = True
                     except:
                         pass
-                
+                else:
+                    # Lógica para tareas de DÍA CONCRETO
+                    # No hay countdown, solo se hacen este día
+                    dias_restantes_msg = "" # No lleva countdown
+
                 # Determinar Prioridad Visual
                 prioridad_real = t.get('prioridad', 'Normal')
                 if es_urgente_auto:
@@ -209,27 +214,25 @@ def main():
                     prioridad_visual = prioridad_real
                     nota_urgencia = ""
 
-                # Objeto enriquecido para visualizar
+                # Objeto enriched
                 t_visual = t.copy()
                 t_visual['prioridad_visual'] = prioridad_visual
                 t_visual['color'] = COLORES_PRIORIDAD.get(prioridad_visual, "gray")
                 t_visual['msg_tiempo'] = dias_restantes_msg
                 t_visual['nota_urgencia'] = nota_urgencia
                 
-                # Clasificar en listas (Según fecha objetivo original)
-                fecha_tarea = t.get('fecha') # Fecha inicio/objetivo
+                # --- CLASIFICACIÓN EN COLAS ---
                 
-                # Grupo 1: Tareas programadas ESPECÍFICAMENTE para la fecha seleccionada
-                if fecha_tarea == str(fecha_seleccionada):
-                    tareas_hoy_list.append(t_visual)
-                # Grupo 2: Tareas que NO son de hoy, pero están vivas (tienen fecha fin futura o vigente)
-                # Solo las mostramos si estamos viendo HOY en el calendario, para no saturar días pasados/futuros
-                elif fecha_seleccionada == hoy_real and t.get('fecha_fin'):
-                     # Mostrar si la fecha fin es hoy o futuro (y no está ya en la lista de hoy)
-                     # Ojo: si fecha_tarea != hoy, pero fecha_fin >= hoy, es una tarea "en curso"
-                     d_fin_obj = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
-                     if d_fin_obj >= hoy_real:
-                         tareas_proximas_list.append(t_visual)
+                if not es_task_deadline:
+                    # Tarea de DÍA CONCRETO: Solo sale si fecha == fecha_seleccionada
+                    if t.get('fecha') == str(fecha_seleccionada):
+                        tareas_hoy_list.append(t_visual)
+                else:
+                    # Tarea de DEADLINE: Sale en "Próximas" siempre que no haya vencido (o sí, para alertar)
+                    # Y solo si miramos HOY (para no ensuciar la vista de dias pasados/futuros)
+                    if fecha_seleccionada == hoy_real:
+                        tareas_proximas_list.append(t_visual)
+
 
             # --- RENDERIZADO ---
             
@@ -263,13 +266,13 @@ def main():
                 st.info("✅ Nada pendiente para hoy.")
 
             if tareas_hoy_list:
-                st.markdown("### 📅 Programadas para hoy")
+                st.markdown("### 📅 Tareas del Día")
                 for t in tareas_hoy_list:
                     render_tarea(t)
             
             # Solo mostrar sección "En curso / Pendientes" si estamos viendo el día actual
-            if tareas_proximas_list and fecha_seleccionada == hoy_real:
-                st.markdown("### 🚑 Próximas Entregas / En Curso")
+            if tareas_proximas_list and fecha_seleccionada == date.today():
+                st.markdown("### 🚑 Entregas y Deadlines")
                 # Ordenar por urgencia (fecha fin más cercana)
                 tareas_proximas_list.sort(key=lambda x: x.get('fecha_fin') or "9999-12-31")
                 for t in tareas_proximas_list:
@@ -279,11 +282,25 @@ def main():
     # --- TAB 2: Añadir Tarea ---
     with tab2:
         st.subheader("Nueva Tarea")
+        
+        modo_tarea = st.radio("¿Qué tipo de tarea es?", 
+                              ["📅 Tarea para un día concreto", "⏰ Tarea con fecha límite (Deadline)"],
+                              horizontal=True)
+        
         with st.form("form_nueva_tarea"):
             titulo = st.text_input("Título")
+            
             c1, c2 = st.columns(2)
-            fecha = c1.date_input("Fecha Objetivo", date.today())
-            fecha_fin = c2.date_input("Deadline / Fecha Fin", None)
+            
+            fecha_input = None
+            fecha_fin_input = None
+            
+            if "día concreto" in modo_tarea:
+                fecha_input = c1.date_input("Fecha de realización", date.today())
+                c2.info("Esta tarea aparecerá SÓLO en el día seleccionado.")
+            else:
+                fecha_fin_input = c1.date_input("Fecha Límite (Deadline)", date.today())
+                c2.warning("Esta tarea mostrará una cuenta atrás hasta que se complete.")
             
             c3, c4 = st.columns(2)
             prioridad = c3.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
@@ -294,14 +311,16 @@ def main():
             if submitted and titulo:
                 # Generar ID único simple (timestamp)
                 nuevo_id = int(datetime.now().timestamp())
+                
                 nueva_tarea = {
                     "id": nuevo_id,
                     "titulo": titulo,
-                    "fecha": str(fecha),
-                    "fecha_fin": str(fecha_fin) if fecha_fin else None,
                     "prioridad": prioridad,
                     "tipo": tipo,
-                    "estado": "Pendiente"
+                    "estado": "Pendiente",
+                    # Guardamos segun el modo:
+                    "fecha": str(fecha_input) if fecha_input else str(date.today()), # Fecha creación o ejecución
+                    "fecha_fin": str(fecha_fin_input) if fecha_fin_input else None
                 }
                 
                 if gestionar_tareas('crear', nueva_tarea=nueva_tarea):
