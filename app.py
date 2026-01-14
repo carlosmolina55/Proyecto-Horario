@@ -82,12 +82,23 @@ def actualizar_horario_clases(force=False):
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
     
     data_clases = []
     
     try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        # Intentar conectar con Chromium instalado (Streamlit Cloud)
+        try:
+            # Opción A: Usar driver del sistema (packages.txt installa chromium-driver en /usr/bin/chromedriver)
+            service = Service("/usr/bin/chromedriver")
+            options.binary_location = "/usr/bin/chromium" 
+            driver = webdriver.Chrome(service=service, options=options)
+        except:
+            # Opción B: Fallback a local (Windows/Mac) con webdriver-manager
+            # Reset options binary if failed
+            options.binary_location = "" 
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
         
         url = "https://portales.uloyola.es/LoyolaHorario/horario.xhtml?curso=2025%2F26&tipo=M&titu=2169&campus=2&ncurso=1&grupo=A"
         driver.get(url)
