@@ -382,64 +382,102 @@ def render_vista_semanal(tareas, fecha_base):
                     color = COLORES_TIPO.get(t.get('tipo'), "gray")
                     st.markdown(f"<div style='border: 2px solid {color}; color: white; padding: 3px; border-radius: 4px; margin: 2px 0; font-size: 0.7em'>⏰ {t['titulo']}</div>", unsafe_allow_html=True)
 
+# --- CONSTANTES DE FECHA (ESPAÑOL) ---
+NOMBRES_MESES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+DIAS_SEMANA_ABR = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
 def render_vista_mensual(tareas, fecha_base):
-    st.subheader(f"Vista Mensual - {fecha_base.strftime('%B %Y')}")
+    nombre_mes = NOMBRES_MESES.get(fecha_base.month, "Mes")
+    st.subheader(f"Vista Mensual - {nombre_mes} {fecha_base.year}")
     
     # Asegurar Lunes como primer día
     calendar.setfirstweekday(calendar.MONDAY)
     cal = calendar.monthcalendar(fecha_base.year, fecha_base.month)
     
-    dias_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-    
     # Cabecera
     cols_header = st.columns(7)
-    for i, d in enumerate(dias_semana):
-        cols_header[i].markdown(f"<div style='text-align:center; border-bottom: 2px solid #555; margin-bottom:5px; opacity: 0.8;'><strong>{d}</strong></div>", unsafe_allow_html=True)
+    for i, d in enumerate(DIAS_SEMANA_ABR):
+        # Estilo de cabecera más robusto
+        cols_header[i].markdown(f"<div style='text-align:center; background-color: #333; color: white; border-radius: 4px; padding: 5px; margin-bottom: 5px;'><strong>{d}</strong></div>", unsafe_allow_html=True)
         
     for week in cal:
         cols = st.columns(7)
         for i, day_num in enumerate(week):
             with cols[i]:
-                
+                # Si el día es 0 (mes anterior/siguiente), mostramos caja vacía pero con altura para mantener grid
                 if day_num == 0:
-                    st.markdown("<div style='height:100px; opacity:0.1; background-color:#333'></div>", unsafe_allow_html=True)
-                else:
-                    dia_actual = date(fecha_base.year, fecha_base.month, day_num)
-                    is_today = dia_actual == date.today()
-                    
-                    # Estilo contenedor día
-                    border_style = "2px solid red" if is_today else "1px solid #444" 
-                    bg_date = "rgba(40,40,40,0.5)"
-                    
-                    st.markdown(f"<div style='min-height: 120px; border: {border_style}; background-color: {bg_date}; border-radius: 4px; padding: 4px; margin-bottom: 4px;'>", unsafe_allow_html=True)
-                    
-                    # Número del día
-                    color_num = "red" if is_today else "#ccc"
-                    st.markdown(f"<div style='text-align: right; color: {color_num}; font-weight: bold; margin-bottom: 2px;'>{day_num}</div>", unsafe_allow_html=True)
-                    
-                    # 1. Horario
-                    clases = HORARIO_FIJO.get(i, [])
-                    for c in clases:
-                        st.markdown(f"<div style='background-color: {COLORES_TIPO['Clase']}; color: white; padding: 2px 4px; border-radius: 4px; margin: 1px 0; font-size: 0.65em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;'>🏫 {c['asignatura']}</div>", unsafe_allow_html=True)
-                    
-                    # 2. Tareas
-                    for t in tareas:
-                        if t.get('estado') == 'Completada': continue
-                        
-                        fecha_t = t.get('fecha')
-                        fecha_f = t.get('fecha_fin')
-                        
-                        # Tarea Día
-                        if fecha_t == str(dia_actual) and not fecha_f:
-                            color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                            st.markdown(f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 4px; margin: 1px 0; font-size: 0.7em;'>📅 {t['titulo'][:15]}...</div>", unsafe_allow_html=True)
-                        
-                        # Deadline
-                        if fecha_f == str(dia_actual):
-                            color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                            st.markdown(f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 4px; margin: 1px 0; font-size: 0.7em;'>⏰ {t['titulo'][:15]}...</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='min-height:100px; background-color: rgba(255,255,255,0.05); border-radius: 4px;'></div>", unsafe_allow_html=True)
+                    continue
                 
-                    st.markdown("</div>", unsafe_allow_html=True)
+                dia_actual = date(fecha_base.year, fecha_base.month, day_num)
+                is_today = dia_actual == date.today()
+                
+                # Definir colores y bordes
+                bg_color = "rgba(40, 40, 40, 0.4)" # Fondo semitransparente para dar cuerpo
+                border_color = "#ff4b4b" if is_today else "#444"
+                border_width = "2px" if is_today else "1px"
+                
+                # CONTENEDOR PRINCIPAL DEL DÍA
+                # Usamos flexbox vertical para asegurar orden: NUMERO -> CONTENIDO
+                st.markdown(f"""
+                <div style='
+                    min-height: 120px;
+                    border: {border_width} solid {border_color};
+                    background-color: {bg_color};
+                    border-radius: 6px;
+                    padding: 5px;
+                    margin-bottom: 5px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                '>
+                """, unsafe_allow_html=True)
+                
+                # 1. NÚMERO DEL DÍA (Header de la celda)
+                color_num = "#ff4b4b" if is_today else "#eee"
+                # Lo ponemos arriba a la derecha o izquierda, con estilo claro
+                st.markdown(f"""
+                <div style='
+                    text-align: right; 
+                    font-size: 1.1em; 
+                    font-weight: bold; 
+                    color: {color_num};
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    margin-bottom: 5px;
+                    padding-bottom: 2px;
+                '>{day_num}</div>
+                """, unsafe_allow_html=True)
+                
+                # 2. CONTENIDO (Horario + Tareas)
+                
+                # Horario
+                clases = HORARIO_FIJO.get(i, [])
+                for c in clases:
+                    st.markdown(f"<div style='background-color: {COLORES_TIPO['Clase']}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>🏫 {c['asignatura']}</div>", unsafe_allow_html=True)
+                
+                # Tareas
+                for t in tareas:
+                    if t.get('estado') == 'Completada': continue
+                    fecha_t = t.get('fecha')
+                    fecha_f = t.get('fecha_fin')
+                    
+                    titulo_corto = (t['titulo'][:12] + '..') if len(t['titulo']) > 12 else t['titulo']
+                    
+                    # Tarea de Día (Fondo sólido)
+                    if fecha_t == str(dia_actual) and not fecha_f:
+                        color = COLORES_TIPO.get(t.get('tipo'), "gray")
+                        st.markdown(f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>📅 {titulo_corto}</div>", unsafe_allow_html=True)
+                    
+                    # Deadline (Borde)
+                    if fecha_f == str(dia_actual):
+                        color = COLORES_TIPO.get(t.get('tipo'), "gray")
+                        st.markdown(f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>⏰ {titulo_corto}</div>", unsafe_allow_html=True)
+                        
+                st.markdown("</div>", unsafe_allow_html=True) # Cierre contenedor día
+
 
 if __name__ == "__main__":
     main()
