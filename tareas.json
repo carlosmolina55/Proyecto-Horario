@@ -4,7 +4,7 @@
         "titulo": "Tarea 2",
         "prioridad": "Normal",
         "tipo": "Examen",
-        "estado": "Completada",
+        "estado": "Pendiente",
         "fecha": "2026-01-16",
         "fecha_fin": null,
         "dia_completo": true,
