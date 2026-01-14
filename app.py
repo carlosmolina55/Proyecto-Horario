@@ -120,6 +120,18 @@ def gestionar_tareas(accion, nueva_tarea=None, id_tarea_eliminar=None, tarea_act
 def main():
     st.title("🎓 Academic Task Planner")
 
+    # --- NOTIFICACIONES GLOBLALES ---
+    # Mostrar mensaje si existe en session_state y luego limpiarlo
+    if "mensaje_global" in st.session_state and st.session_state["mensaje_global"]:
+        tipo = st.session_state["mensaje_global"]["tipo"]
+        texto = st.session_state["mensaje_global"]["texto"]
+        if tipo == "exito":
+            st.success(texto)
+        elif tipo == "error":
+            st.error(texto)
+        # Limpiar el mensaje para que no salga en la siguiente recarga
+        st.session_state["mensaje_global"] = None
+
     # --- SIDEBAR ---
     with st.sidebar:
         st.header("📅 Navegación")
@@ -168,7 +180,10 @@ def main():
                         cols[0].write(f"🏷️ {t['tipo']}")
                         if cols[1].button("✅", key=f"check_{t['id']}"):
                             t['estado'] = 'Completada'
-                            gestionar_tareas('actualizar', tarea_actualizada=t)
+                            if gestionar_tareas('actualizar', tarea_actualizada=t):
+                                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "✅ Tarea marcada como completada y guardada en GitHub."}
+                            else:
+                                st.session_state["mensaje_global"] = {"tipo": "error", "texto": "❌ Error al actualizar en GitHub."}
                             st.rerun()
 
     # --- TAB 2: Añadir Tarea ---
@@ -199,11 +214,11 @@ def main():
                     "estado": "Pendiente"
                 }
                 
-                if managing := gestionar_tareas('crear', nueva_tarea=nueva_tarea):
-                    st.success("Tarea guardada en GitHub!")
+                if gestionar_tareas('crear', nueva_tarea=nueva_tarea):
+                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Nueva tarea guardada correctamente en GitHub."}
                     st.rerun()
                 else:
-                    st.error("Error al guardar.")
+                    st.error("Error al guardar.") # Fallback si no recarga
 
     # --- TAB 3: Todas las Tareas (Gestión) ---
     with tab3:
@@ -241,11 +256,17 @@ def main():
                             t['titulo'] = e_titulo
                             t['estado'] = e_estado
                             t['prioridad'] = e_prioridad
-                            gestionar_tareas('actualizar', tarea_actualizada=t)
+                            if gestionar_tareas('actualizar', tarea_actualizada=t):
+                                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "✏️ Tarea actualizada en GitHub."}
+                            else:
+                                st.session_state["mensaje_global"] = {"tipo": "error", "texto": "❌ Error al actualizar en GitHub."}
                             st.rerun()
                             
                     if st.button("🗑️ Borrar Tarea", key=f"del_{t['id']}"):
-                        gestionar_tareas('borrar', id_tarea_eliminar=t['id'])
+                        if gestionar_tareas('borrar', id_tarea_eliminar=t['id']):
+                            st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Tarea eliminada de GitHub."}
+                        else:
+                            st.session_state["mensaje_global"] = {"tipo": "error", "texto": "❌ Error al borrar en GitHub."}
                         st.rerun()
 
 if __name__ == "__main__":
