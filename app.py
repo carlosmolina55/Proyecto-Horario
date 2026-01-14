@@ -415,26 +415,27 @@ def render_vista_mensual(tareas, fecha_base):
                 is_today = dia_actual == date.today()
                 
                 # Definir colores y bordes
-                # Fondo transparente
-                border_color = "#ff4b4b" if is_today else "#333" # Borde sutil
+                bg_color = "transparent"
+                border_color = "#ff4b4b" if is_today else "#333" 
                 border_width = "2px" if is_today else "1px"
                 
-                # CONTENEDOR PRINCIPAL DEL DÍA
-                st.markdown(f"""
+                # --- CONSTRUCCIÓN DEL HTML DE LA CELDA ---
+                html_celda = f"""
                 <div style='
                     min-height: 120px;
                     border: {border_width} solid {border_color};
+                    background-color: {bg_color};
                     border-radius: 6px;
                     padding: 4px;
                     margin-bottom: 4px;
                     display: flex;
                     flex-direction: column;
                 '>
-                """, unsafe_allow_html=True)
+                """
                 
-                # 1. NÚMERO DEL DÍA
+                # 1. HEADER (Número)
                 color_num = "#ff4b4b" if is_today else "#ccc"
-                st.markdown(f"""
+                html_celda += f"""
                 <div style='
                     text-align: right; 
                     font-weight: bold; 
@@ -443,14 +444,14 @@ def render_vista_mensual(tareas, fecha_base):
                     margin-bottom: 4px;
                     padding-bottom: 2px;
                 '>{day_num}</div>
-                """, unsafe_allow_html=True)
+                """
                 
                 # 2. CONTENIDO (Horario + Tareas)
                 
                 # Horario
                 clases = HORARIO_FIJO.get(i, [])
                 for c in clases:
-                    st.markdown(f"<div style='background-color: {COLORES_TIPO['Clase']}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>🏫 {c['asignatura']}</div>", unsafe_allow_html=True)
+                    html_celda += f"<div style='background-color: {COLORES_TIPO['Clase']}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>🏫 {c['asignatura']}</div>"
                 
                 # Tareas
                 for t in tareas:
@@ -460,17 +461,20 @@ def render_vista_mensual(tareas, fecha_base):
                     
                     titulo_corto = (t['titulo'][:12] + '..') if len(t['titulo']) > 12 else t['titulo']
                     
-                    # Tarea de Día (Fondo sólido)
+                    # Tarea de Día
                     if fecha_t == str(dia_actual) and not fecha_f:
                         color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                        st.markdown(f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>📅 {titulo_corto}</div>", unsafe_allow_html=True)
+                        html_celda += f"<div style='background-color: {color}; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>📅 {titulo_corto}</div>"
                     
-                    # Deadline (Borde)
+                    # Deadline
                     if fecha_f == str(dia_actual):
                         color = COLORES_TIPO.get(t.get('tipo'), "gray")
-                        st.markdown(f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>⏰ {titulo_corto}</div>", unsafe_allow_html=True)
-                        
-                st.markdown("</div>", unsafe_allow_html=True) # Cierre contenedor día
+                        html_celda += f"<div style='border: 1px solid {color}; color: white; padding: 1px 3px; border-radius: 3px; margin-bottom: 2px; font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;' title='{t['titulo']}'>⏰ {titulo_corto}</div>"
+                
+                html_celda += "</div>"
+                
+                # RENDER FINAL
+                st.markdown(html_celda, unsafe_allow_html=True) # Cierre contenedor día
 
 
 if __name__ == "__main__":
