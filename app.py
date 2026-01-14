@@ -140,70 +140,64 @@ def actualizar_horario_clases(force=False):
         for _ in range(weeks_to_scrape):
             try:
                 # --- ESPERAR A QUE CARGUEN LOS EVENTOS ---
-                # Esperamos a que haya al menos 1 evento o pasen 3 segundos (por si es semana vacía)
                 try:
-                    WebDriverWait(driver, 3).until(
+                    WebDriverWait(driver, 5).until(
                         EC.presence_of_element_located((By.CLASS_NAME, "fc-event"))
                     )
                 except:
-                    # Si salta timeout, puede que sea una semana sin clases (vacaciones)
-                    # Continuamos intentando leer headers por si acaso
                     pass
                 
-                # Pequeña pausa extra para asegurar renderizado completo (posiciones 'left')
-                time_lib.sleep(1)
+                time_lib.sleep(1.5)
 
-                # Recoger headers para saber fecha exacta de cada columna
+                # 1. MAPEAR COLUMNAS (DÍAS) usando coordenadas X
+                # Los headers tienen el atributo 'data-date' (YYYY-MM-DD)
                 headers = driver.find_elements(By.CLASS_NAME, "fc-col-header-cell")
-                week_dates = {} # index (0-6) -> date_str (YYYY-MM-DD)
+                column_map = [] # list of {date: str, x_start: float, x_end: float}
                 
-                for idx, h in enumerate(headers):
-                    txt = h.text.lower() # "lun 13/1"
-                    if not txt: continue
-                    parts = txt.split(' ')
-                    if len(parts) > 1:
-                        day_month = parts[1].split('/') # ["13", "1"]
-                        d = int(day_month[0])
-                        m = int(day_month[1])
-                        
-                        y = current_year
-                        # Ajuste básico de año
-                        if m < datetime.now().month and datetime.now().month > 10:
-                            y += 1
-                        
-                        week_dates[idx] = f"{y}-{m:02d}-{d:02d}"
-
-                # Recoger Eventos
+                for h in headers:
+                    d_date = h.get_attribute("data-date") # "2026-01-12"
+                    if d_date:
+                        rect = h.rect # {'x': 100, 'y': 50, 'width': 200, ...}
+                        column_map.append({
+                            "date": d_date,
+                            "x_start": rect['x'],
+                            "x_end": rect['x'] + rect['width']
+                        })
+                
+                # 2. RECOGER EVENTOS y asignarlos por coordenada X
                 events = driver.find_elements(By.CLASS_NAME, "fc-event")
-                
-                # Debug logging (opcional, visible en logs de streamlit cloud)
-                # print(f"Semana encontrada: {len(events)} eventos")
                 
                 for ev in events:
                     try:
-                        style = ev.get_attribute("style")
-                        # style es algo como "top: 450px; bottom: -570px; left: 14.28%; right: -28.57%;"
-                        left_val = 0.0
-                        if "left:" in style:
-                            l_str = style.split("left:")[1].split("%")[0].strip()
-                            left_val = float(l_str)
+                        # Coordenada X del evento
+                        ev_rect = ev.rect
+                        ev_center_x = ev_rect['x'] + (ev_rect['width'] / 2)
                         
-                        # Las columnas son ~14.28% cada una (100% / 7)
-                        col_idx = int(round(left_val / 14.28)) # 0..6
+                        # Buscar a qué columna pertenece
+                        fecha_clase = None
+                        for col in column_map:
+                            if col['x_start'] <= ev_center_x <= col['x_end']:
+                                fecha_clase = col['date']
+                                break
                         
-                        fecha_clase = week_dates.get(col_idx)
                         if not fecha_clase: continue
                         
                         # Extraer texto
-                        hora_elem = ev.find_element(By.CLASS_NAME, "fc-event-time")
-                        title_elem = ev.find_element(By.CLASS_NAME, "fc-event-title")
-                        
-                        hora_text = hora_elem.text
-                        content_text = title_elem.text
-                        
+                        # A veces el texto está directo o en hijos
+                        full_text = ev.text 
+                        # Intentar parsing más específico si existen los elementos internos
+                        try:
+                            hora_text = ev.find_element(By.CLASS_NAME, "fc-event-time").text
+                            content_text = ev.find_element(By.CLASS_NAME, "fc-event-title").text
+                        except:
+                            # Fallback si no encuentra hijos (estructura diferente)
+                            lines = full_text.split('\n')
+                            hora_text = lines[0] if lines else ""
+                            content_text = lines[1] if len(lines) > 1 else ""
+
                         parts = content_text.split("/")
                         asig = parts[0].strip()
-                        aula = parts[1].replace("Aula:", "").strip() if len(parts) > 1 else ""
+                        aula = parts[1].replace("Aula:", "").strip() if len(parts) > 1 else "Desconocido"
                         
                         data_clases.append({
                             "asignatura": asig,
@@ -221,8 +215,9 @@ def actualizar_horario_clases(force=False):
                 try:
                     btn_next = driver.find_element(By.CLASS_NAME, "fc-next-button")
                     btn_next.click()
+                    time_lib.sleep(1.0) 
                 except:
-                   break # Si no hay botón next, salimos
+                   break 
                    
             except Exception as e:
                 # print(f"Error scraping week: {e}")
