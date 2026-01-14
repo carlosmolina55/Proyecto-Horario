@@ -212,37 +212,46 @@ def render_vista_nueva_tarea():
         
         with col_tipo:
             st.info("Configuración Básica")
-            modo_tarea = st.radio("Modo de Tarea", ["📅 Día concreto", "⏰ Deadline"])
+            # Usar Key para mantener estado
+            modo_tarea = st.radio("Modo de Tarea", ["📅 Día concreto", "⏰ Deadline"], key="modo_tarea_new")
             
         with col_form:
-            with st.form("form_nueva_tarea_main"):
-                tit = st.text_input("Título de la tarea")
-                
-                c1, c2 = st.columns(2)
-                if "Deadline" in modo_tarea:
-                    f_fin = c1.date_input("Fecha Límite (Deadline)", get_madrid_date())
-                    f_ini = None
+            # Quitamos st.form para permitir interactividad (checkbox muestra/oculta hora)
+            st.markdown("##### Estancia de Datos")
+            
+            tit = st.text_input("Título de la tarea", key="tit_new")
+            
+            c1, c2 = st.columns(2)
+            
+            # FECHAS
+            if "Deadline" in modo_tarea:
+                f_fin = c1.date_input("Fecha Límite (Deadline)", get_madrid_date(), key="date_deadline_new")
+                f_ini = None
+            else:
+                f_ini = c1.date_input("Fecha de Realización", get_madrid_date(), key="date_fix_new")
+                f_fin = None
+            
+            # HORA (Interactivo)
+            # Checkbox con estado real
+            chk_dia_completo = c2.checkbox("📅 Todo el día", value=True, key="chk_all_day_new")
+            
+            hora_seleccionada = None
+            if not chk_dia_completo:
+                # Si no es todo el día, mostramos el input de hora
+                hora_defecto = datetime.now().time().replace(minute=0, second=0)
+                hora_seleccionada = c2.time_input("Hora", hora_defecto, step=900, key="time_new") # step 15 min
+            
+            # RESTO DE CAMPOS
+            prio = c1.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], key="prio_new")
+            tipo = c2.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1], key="type_new") # Excluir 'Clase'
+            
+            st.write("") # Espacio
+            
+            # BOTON GUARDAR
+            if st.button("💾 Guardar Tarea", type="primary", use_container_width=True):
+                if not tit:
+                    st.error("⚠️ El título es obligatorio.")
                 else:
-                    f_ini = c1.date_input("Fecha de Realización", get_madrid_date())
-                    f_fin = None
-                
-                # --- NUEVO: HORA ---
-                c_hora_1, c_hora_2 = c1.columns([1, 2]) if "Deadline" not in modo_tarea else (None, None) 
-                # Solo mostrar hora para fecha concreta (aunque para deadline tambien podria servir, lo pondremos en los dos para consistencia si el usuario quiere)
-                
-                # Mejor lo ponemos en una fila nueva para que quepa bien
-                
-                chk_dia_completo = c2.checkbox("📅 Todo el día", value=True)
-                hora_seleccionada = None
-                
-                if not chk_dia_completo:
-                    hora_seleccionada = c2.time_input("Hora", datetime.now().time())
-                
-                prio = c1.selectbox("Prioridad", ["Normal", "Importante", "Urgente"])
-                tipo = c2.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1]) # Excluir 'Clase'
-                
-                st.write("") # Espacio
-                if st.form_submit_button("💾 Guardar Tarea", use_container_width=True, type="primary"):
                     nt = {
                         "id": int(get_madrid_time().timestamp()), 
                         "titulo": tit, 
@@ -255,7 +264,7 @@ def render_vista_nueva_tarea():
                         "hora": str(hora_seleccionada.strftime("%H:%M")) if hora_seleccionada else None
                     }
                     gestionar_tareas('crear', nueva_tarea=nt)
-                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada"}
+                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada correctamente"}
                     st.rerun()
 
 def render_vista_gestionar_todas(tareas):
