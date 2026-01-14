@@ -139,6 +139,20 @@ def actualizar_horario_clases(force=False):
         
         for _ in range(weeks_to_scrape):
             try:
+                # --- ESPERAR A QUE CARGUEN LOS EVENTOS ---
+                # Esperamos a que haya al menos 1 evento o pasen 3 segundos (por si es semana vacía)
+                try:
+                    WebDriverWait(driver, 3).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, "fc-event"))
+                    )
+                except:
+                    # Si salta timeout, puede que sea una semana sin clases (vacaciones)
+                    # Continuamos intentando leer headers por si acaso
+                    pass
+                
+                # Pequeña pausa extra para asegurar renderizado completo (posiciones 'left')
+                time_lib.sleep(1)
+
                 # Recoger headers para saber fecha exacta de cada columna
                 headers = driver.find_elements(By.CLASS_NAME, "fc-col-header-cell")
                 week_dates = {} # index (0-6) -> date_str (YYYY-MM-DD)
@@ -153,6 +167,7 @@ def actualizar_horario_clases(force=False):
                         m = int(day_month[1])
                         
                         y = current_year
+                        # Ajuste básico de año
                         if m < datetime.now().month and datetime.now().month > 10:
                             y += 1
                         
@@ -161,21 +176,30 @@ def actualizar_horario_clases(force=False):
                 # Recoger Eventos
                 events = driver.find_elements(By.CLASS_NAME, "fc-event")
                 
+                # Debug logging (opcional, visible en logs de streamlit cloud)
+                # print(f"Semana encontrada: {len(events)} eventos")
+                
                 for ev in events:
                     try:
                         style = ev.get_attribute("style")
+                        # style es algo como "top: 450px; bottom: -570px; left: 14.28%; right: -28.57%;"
                         left_val = 0.0
                         if "left:" in style:
                             l_str = style.split("left:")[1].split("%")[0].strip()
                             left_val = float(l_str)
                         
+                        # Las columnas son ~14.28% cada una (100% / 7)
                         col_idx = int(round(left_val / 14.28)) # 0..6
                         
                         fecha_clase = week_dates.get(col_idx)
                         if not fecha_clase: continue
                         
-                        hora_text = ev.find_element(By.CLASS_NAME, "fc-event-time").text
-                        content_text = ev.find_element(By.CLASS_NAME, "fc-event-title").text
+                        # Extraer texto
+                        hora_elem = ev.find_element(By.CLASS_NAME, "fc-event-time")
+                        title_elem = ev.find_element(By.CLASS_NAME, "fc-event-title")
+                        
+                        hora_text = hora_elem.text
+                        content_text = title_elem.text
                         
                         parts = content_text.split("/")
                         asig = parts[0].strip()
@@ -189,13 +213,17 @@ def actualizar_horario_clases(force=False):
                             "dia_completo": False
                         })
                         
-                    except: pass
+                    except Exception as e_ev: 
+                        # print(f"Error parsing event: {e_ev}")
+                        pass
                 
                 # Click Siguiente Semana
-                btn_next = driver.find_element(By.CLASS_NAME, "fc-next-button")
-                btn_next.click()
-                time_lib.sleep(1.0) 
-                
+                try:
+                    btn_next = driver.find_element(By.CLASS_NAME, "fc-next-button")
+                    btn_next.click()
+                except:
+                   break # Si no hay botón next, salimos
+                   
             except Exception as e:
                 # print(f"Error scraping week: {e}")
                 break
