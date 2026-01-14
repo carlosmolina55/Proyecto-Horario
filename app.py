@@ -400,53 +400,47 @@ def render_vista_mensual(tareas, fecha_base):
     # Cabecera
     cols_header = st.columns(7)
     for i, d in enumerate(DIAS_SEMANA_ABR):
-        # Estilo de cabecera más robusto
-        cols_header[i].markdown(f"<div style='text-align:center; background-color: #333; color: white; border-radius: 4px; padding: 5px; margin-bottom: 5px;'><strong>{d}</strong></div>", unsafe_allow_html=True)
+        cols_header[i].markdown(f"<div style='text-align:center; background-color: #262730; padding: 5px; border-radius: 4px; margin-bottom: 5px;'><strong>{d}</strong></div>", unsafe_allow_html=True)
         
     for week in cal:
         cols = st.columns(7)
         for i, day_num in enumerate(week):
             with cols[i]:
-                # Si el día es 0 (mes anterior/siguiente), mostramos caja vacía pero con altura para mantener grid
+                # Si el día es 0 (mes anterior/siguiente), ocultar completamente
                 if day_num == 0:
-                    st.markdown("<div style='min-height:100px; background-color: rgba(255,255,255,0.05); border-radius: 4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='min-height:100px;'></div>", unsafe_allow_html=True)
                     continue
                 
                 dia_actual = date(fecha_base.year, fecha_base.month, day_num)
                 is_today = dia_actual == date.today()
                 
                 # Definir colores y bordes
-                bg_color = "rgba(40, 40, 40, 0.4)" # Fondo semitransparente para dar cuerpo
-                border_color = "#ff4b4b" if is_today else "#444"
+                # Fondo transparente
+                border_color = "#ff4b4b" if is_today else "#333" # Borde sutil
                 border_width = "2px" if is_today else "1px"
                 
                 # CONTENEDOR PRINCIPAL DEL DÍA
-                # Usamos flexbox vertical para asegurar orden: NUMERO -> CONTENIDO
                 st.markdown(f"""
                 <div style='
                     min-height: 120px;
                     border: {border_width} solid {border_color};
-                    background-color: {bg_color};
                     border-radius: 6px;
-                    padding: 5px;
-                    margin-bottom: 5px;
+                    padding: 4px;
+                    margin-bottom: 4px;
                     display: flex;
                     flex-direction: column;
-                    justify-content: flex-start;
                 '>
                 """, unsafe_allow_html=True)
                 
-                # 1. NÚMERO DEL DÍA (Header de la celda)
-                color_num = "#ff4b4b" if is_today else "#eee"
-                # Lo ponemos arriba a la derecha o izquierda, con estilo claro
+                # 1. NÚMERO DEL DÍA
+                color_num = "#ff4b4b" if is_today else "#ccc"
                 st.markdown(f"""
                 <div style='
                     text-align: right; 
-                    font-size: 1.1em; 
                     font-weight: bold; 
                     color: {color_num};
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
-                    margin-bottom: 5px;
+                    border-bottom: 1px solid #333;
+                    margin-bottom: 4px;
                     padding-bottom: 2px;
                 '>{day_num}</div>
                 """, unsafe_allow_html=True)
