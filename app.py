@@ -258,84 +258,71 @@ def actualizar_horario_sevilla(driver=None):
             time_lib.sleep(1)
         except: pass
         
-        # Esperar a tabla
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+        # Estrategia Robusta V2: Basada en el texto que ve el usuario
+        # "LUN 19.01.2026 \n 21:00 \n Elche CF \n VS \n Sevilla FC ..."
+        import re
         
-        # Estrategia Robusta: Buscar todas las filas y filtrar las que tengan fecha
         filas = driver.find_elements(By.TAG_NAME, "tr")
         
         for fila in filas:
             # Ignorar filas de info extra
-            if "more-info" in fila.get_attribute("class") or "more-info" in fila.get_attribute("outerHTML"):
-                 continue
+            if "more-info" in fila.get_attribute("class"): continue
             
             try:
-                # Verificar si es una fila de partido buscando la celda de fecha
-                fechas = fila.find_elements(By.CSS_SELECTOR, "td[type='date'] p")
-                if not fechas: continue
+                texto_fila = fila.text
+                if not texto_fila: continue
                 
-                fecha_txt = fechas[0].text.strip() # "18 ENE. 25"
+                # 1. Buscar Fecha (DD.MM.YYYY)
+                match_fecha = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", texto_fila)
+                if not match_fecha:
+                     # Intentar formato anterior por si acaso (18 ENE. 25)
+                     # (Logica anterior simplificada o omitida si asumimos el cambio total)
+                     continue
                 
-                # Parsear fecha
-                meses_es = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6, "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
+                dia = int(match_fecha.group(1))
+                mes = int(match_fecha.group(2))
+                anio = int(match_fecha.group(3))
+                fecha_obj = date(anio, mes, dia)
+                fecha_iso = fecha_obj.strftime("%Y-%m-%d")
                 
-                # Limpieza: "19 ENE. 26" -> ["19", "ENE", "26"]
-                parts = fecha_txt.replace(".", "").upper().split(" ")
-                
-                if len(parts) >= 3:
-                    dia = int(parts[0])
-                    # Buscar el mes que coincida parcialmente
-                    mes_str = parts[1]
-                    mes = 1
-                    for k,v in meses_es.items():
-                        if k in mes_str:
-                            mes = v
-                            break
-                    
-                    anio = 2000 + int(parts[2])
-                    fecha_obj = date(anio, mes, dia)
-                    fecha_iso = fecha_obj.strftime("%Y-%m-%d")
-                else:
-                    continue
-                
-                # Hora
-                hora_el = fila.find_element(By.CSS_SELECTOR, "td[type='time'] p")
-                hora_txt = hora_el.text.strip()
-                
-                es_dia_completo = False
-                if "--" in hora_txt:
-                    es_dia_completo = True
+                # 2. Buscar Hora (HH:MM o -- : --)
+                # Buscamos patron HH:MM
+                match_hora = re.search(r"(\d{2}:\d{2})", texto_fila)
+                if match_hora:
+                    hora_txt = match_hora.group(1)
+                    es_dia_completo = False
+                elif "--" in texto_fila and ":" in texto_fila:
                     hora_txt = None
+                    es_dia_completo = True
+                else:
+                    # Si no hay hora explicita, asumimos TBD
+                    hora_txt = None
+                    es_dia_completo = True
                 
-                # Equipos: Buscamos los escudos/nombres
-                # La estructura suele ser Home - VS - Away.
-                # Buscamos divs que parezcan equipos (suelen tener clase ShieldStyled o similar, o simplemente p)
-                # Vamos a buscar todos los parrafos en la fila y deducir
-                ps = fila.find_elements(By.TAG_NAME, "p")
-                # El orden suele ser: Fecha, Hora, Equipo1, (VS), Equipo2, TV...
-                # Filtramos los textos para excluir fecha y hora ya conocidos
+                # 3. Equipos
+                # Dividimos por saltos de linea
+                lineas = [l.strip() for l in texto_fila.split('\n') if l.strip()]
                 
-                texts = [p.text for p in ps if p.text and p.text != fecha_txt and p.text != hora_txt and "VS" not in p.text]
-                # texts deberia tener [Equipo1, Equipo2, ...]
+                # Identificamos el índice del "VS"
+                idx_vs = -1
+                for i, l in enumerate(lineas):
+                    if l.upper() == "VS":
+                        idx_vs = i
+                        break
                 
                 local_name = "Desconocido"
                 visitante_name = "Desconocido"
                 
-                # Fallback: selectores especificos si existen
-                try:
-                     equipos_divs = fila.find_elements(By.CSS_SELECTOR, "div[class*='ShieldStyled'] p")
-                     if len(equipos_divs) >= 2:
-                         local_name = equipos_divs[0].text
-                         visitante_name = equipos_divs[1].text
-                     elif len(texts) >= 2: # Fallback a lista plana
-                         local_name = texts[0]
-                         visitante_name = texts[1]
-                except:
-                     if len(texts) >= 2:
-                         local_name = texts[0]
-                         visitante_name = texts[1]
-
-                # Determinar Casa/Fuera
+                if idx_vs > 0 and idx_vs + 1 < len(lineas):
+                    local_name = lineas[idx_vs - 1]
+                    visitante_name = lineas[idx_vs + 1]
+                else:
+                    # Fallback si el VS no está visualmente o el texto es distinto
+                    # A veces salen equipos antes que la hora o despues.
+                    # Si tenemos la fecha y hora, los equipos suelen ser los textos "largos" adyacentes
+                    pass
+                
+                # 4. Casa / Fuera
                 ubicacion = "Fuera"
                 rival = local_name
                 
