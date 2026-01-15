@@ -81,7 +81,7 @@
         "titulo": "Preguntar Diego Congreso",
         "prioridad": "Urgente",
         "tipo": "Otro",
-        "estado": "Completada",
+        "estado": "Pendiente",
         "fecha": "2026-01-15",
         "fecha_fin": null,
         "dia_completo": true,
