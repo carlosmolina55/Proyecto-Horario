@@ -1008,6 +1008,24 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
                         else:
                             c2.write("✅")
 
+        # Ordenar Deadlines: 1. Importancia, 2. Dias que quedan
+        def sort_deadlines(x):
+            # 1. Prioridad: Urgente(0) > Importante(1) > Normal(2) > Baja(3) > Otro(4)
+            prio_map = {"Urgente": 0, "Importante": 1, "Normal": 2, "Baja": 3}
+            p_val = prio_map.get(x.get('prioridad'), 4)
+            
+            # 2. Dias Restantes
+            d_val = 9999
+            if x.get('fecha_fin'):
+                try:
+                    d_fin = datetime.strptime(x['fecha_fin'], "%Y-%m-%d").date()
+                    d_val = (d_fin - hoy_real).days
+                except: pass
+            
+            return (p_val, d_val)
+        
+        tareas_proximas_list.sort(key=sort_deadlines)
+
         if tareas_proximas_list and fecha_seleccionada == hoy_real:
             st.markdown("### 🚑 Entregas y Deadlines")
             for t in tareas_proximas_list:
