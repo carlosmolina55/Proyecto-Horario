@@ -372,7 +372,7 @@ def gestionar_horario(accion, nuevo_item=None, id_eliminar=None, item_actualizad
 # --- UI Y LÓGICA ---
 
 def main():
-    st.title("🎓 Academic Task Planner")
+    st.title("🎓 AutoGestor")
 
     # --- NOTIFICACIONES GLOBLALES ---
     if "mensaje_global" in st.session_state and st.session_state["mensaje_global"]:
