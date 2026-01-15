@@ -1162,6 +1162,8 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
                 
                 # Botón
                 if st.button(label, key=key_btn, use_container_width=True):
+                    # Asegurar titulo para weekly dialog también
+                    if 'titulo' not in item['raw']: item['raw']['titulo'] = item['titulo']
                     mostrar_detalle_item(item['raw'])
 
 
@@ -1286,7 +1288,9 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     elif item.get('es_rutina'): icon = "🔄"
                     
                     title_full = item['titulo']
-                    label_m = f"{icon} {title_full}" # Ahora mostramos icono Y titulo
+                    # Truncar visualmente para el botón mensual
+                    trunc_m = (title_full[:8] + '..') if len(title_full) > 8 else title_full
+                    label_m = f"{icon} {trunc_m}" # Ahora mostramos icono Y titulo truncado
                     
                     # Key única mensual
                     try: 
