@@ -618,7 +618,7 @@ def render_vista_gestionar_todas(tareas):
             
             for h in lista_ordenada:
                 with st.container(border=True):
-                    c1, c2 = st.columns([4, 1])
+                    c1, c2 = st.columns([5, 2])
                     
                     titulo_h = f"🔄 {h['titulo']}" if h.get('es_rutina') else f"📅 {h['titulo']}"
                     
@@ -633,10 +633,68 @@ def render_vista_gestionar_todas(tareas):
                     c1.markdown(f"**{titulo_h}** ({h['hora_inicio']} - {h['hora_fin']})")
                     c1.caption(f"{h['ubicacion']}{info_extra}")
                     
-                    if c2.button("🗑️", key=f"del_h_{h['id']}"):
-                        gestionar_horario('borrar', id_eliminar=h['id'])
-                        st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Evento/Horario eliminado"}
-                        st.rerun()
+                    with c2:
+                         ca_edit, ca_del = st.columns(2)
+                         
+                         # Boton Editar (Popover)
+                         with ca_edit.popover("✏️", help="Editar"):
+                            with st.form(f"edit_h_form_{h['id']}"):
+                                st.write("📝 **Editar Evento**")
+                                e_titulo = st.text_input("Título", h['titulo'])
+                                e_ubicacion = st.text_input("Ubicación", h.get('ubicacion',''))
+                                idx_tipo = ["Clase", "Estudio", "Rutina", "Evento", "Otro"].index(h.get('tipo', 'Evento')) if h.get('tipo') in ["Clase", "Estudio", "Rutina", "Evento", "Otro"] else 3
+                                e_tipo = st.selectbox("Tipo", ["Clase", "Estudio", "Rutina", "Evento", "Otro"], index=idx_tipo)
+                                
+                                e_es_rutina = st.toggle("Rutina Semanal", h.get('es_rutina'))
+                                
+                                c_f1, c_f2 = st.columns(2)
+                                e_dias_sel = []
+                                e_fecha_str = None
+                                
+                                if e_es_rutina:
+                                    dias_map = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                                    def_dias = [dias_map[i] for i in h.get('dias_semana', [])]
+                                    with c_f1: dias_txt = st.multiselect("Días", dias_map, default=def_dias)
+                                    e_dias_sel = [dias_map.index(d) for d in dias_txt]
+                                else:
+                                    try: def_dt = datetime.strptime(h.get('fecha', get_madrid_date().strftime("%Y-%m-%d")), "%Y-%m-%d").date()
+                                    except: def_dt = get_madrid_date()
+                                    with c_f1: e_fecha = st.date_input("Fecha", def_dt)
+                                    e_fecha_str = str(e_fecha)
+                                
+                                # Horas
+                                try: t_i = datetime.strptime(h.get('hora_inicio', '09:00'), "%H:%M").time()
+                                except: t_i = time(9,0)
+                                try: t_f = datetime.strptime(h.get('hora_fin', '10:00'), "%H:%M").time()
+                                except: t_f = time(10,0)
+                                
+                                with c_f2: e_h_ini = st.time_input("Inicio", t_i)
+                                with c_f2: e_h_fin = st.time_input("Fin", t_f)
+                                
+                                if st.form_submit_button("Guardar Cambios", type="primary"):
+                                    h['titulo'] = e_titulo
+                                    h['ubicacion'] = e_ubicacion
+                                    h['tipo'] = e_tipo
+                                    h['es_rutina'] = e_es_rutina
+                                    h['hora_inicio'] = e_h_ini.strftime("%H:%M")
+                                    h['hora_fin'] = e_h_fin.strftime("%H:%M")
+                                    
+                                    if e_es_rutina:
+                                        h['dias_semana'] = e_dias_sel
+                                        h['fecha'] = None
+                                    else:
+                                        h['dias_semana'] = []
+                                        h['fecha'] = e_fecha_str
+                                    
+                                    gestionar_horario('actualizar', item_actualizado=h)
+                                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "✏️ Evento actualizado"}
+                                    st.rerun()
+
+                         # Boton Borrar
+                         if ca_del.button("🗑️", key=f"del_h_{h['id']}", help="Borrar"):
+                            gestionar_horario('borrar', id_eliminar=h['id'])
+                            st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "🗑️ Evento/Horario eliminado"}
+                            st.rerun()
 
 def render_tarjeta_gestion(t):
     """Auxiliar para pintar la tarjeta de una tarea en la lista de gestión"""
