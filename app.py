@@ -1029,52 +1029,43 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
     # CSS HACK: Forzar layout horizontal en móvil con escalado automático
     st.markdown("""
         <style>
-        @media (max-width: 768px) {
-            /* Forzar fila sin scroll */
-            div[data-testid="stHorizontalBlock"] {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: hidden !important; /* Sin scroll */
-                gap: 1px !important; /* Espacio mínimo */
-            }
-            /* Columnas flexibles que encogen */
-            div[data-testid="column"] {
-                flex: 0 0 14.28% !important; /* EXACTAMENTE 1/7 */
-                max-width: 14.28% !important;
-                min-width: 0px !important;
-                padding: 0 !important;
-            }
-            /* Texto Headers responsivo (vw) */
-            div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
-                font-size: 2.8vw !important; /* Escala segun ancho pantalla */
-                line-height: 1.1 !important;
-            }
-            /* Botones ultra compactos y escalables */
-            div[data-testid="stButton"] button {
-                padding: 2px 1px !important;
-                font-size: 2.4vw !important; /* Texto botón escala también */
-                min-height: auto !important;
-                height: auto !important;
-                line-height: 1.2 !important;
-                white-space: nowrap !important; 
-                overflow: hidden !important;
-                border-radius: 4px !important;
-            }
-            div[data-testid="stButton"] button p {
-                font-size: 2.4vw !important;
+            /* Ajustes BASICOS para móvil (Tablet/Horizontal) */
+            @media (max-width: 900px) {
+                div[data-testid="stHorizontalBlock"] {
+                    flex-direction: row !important;
+                    flex-wrap: nowrap !important;
+                    overflow-x: hidden !important; 
+                }
+                div[data-testid="column"] {
+                    flex: 1 1 0 !important;
+                    min-width: 0 !important;
+                }
             }
             
-            /* Ajustes EXTRA para móvil vertical (Portrait) */
-            @media (max-width: 480px) {
-                div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
-                    font-size: 3.2vw !important; /* Un poco mas grande relativo al ancho muy pequeño */
+            /* Ajustes ESPECÍFICOS VERTICAL (PORTRAIT) - Aquí es donde forzamos todo */
+            @media (orientation: portrait) and (max-width: 600px) {
+                 div[data-testid="column"] {
+                    flex: 0 0 14.28% !important; /* Forzar ancho estricto */
+                    max-width: 14.28% !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                 }
+                 /* Letra minúscula para caber */
+                 div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
+                    font-size: 2.2vw !important; 
+                    line-height: 1.0 !important;
+                    padding: 0 1px !important;
                 }
+                /* Botones comprimidos */
                 div[data-testid="stButton"] button {
-                    font-size: 2.8vw !important;
+                    font-size: 2vw !important;
                     padding: 0px !important;
+                    min-height: 15px !important;
+                    height: auto !important;
                 }
                  div[data-testid="stButton"] button p {
-                    font-size: 2.8vw !important;
+                    font-size: 2vw !important;
+                    padding: 0 !important;
                 }
             }
         }
@@ -1236,48 +1227,32 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
     # CSS HACK force horizontal
     st.markdown("""
         <style>
-        @media (max-width: 768px) {
-            div[data-testid="stHorizontalBlock"] {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: hidden !important;
-                gap: 1px !important;
-            }
-            div[data-testid="column"] {
-                flex: 0 0 14.28% !important;
-                max-width: 14.28% !important;
-                min-width: 0px !important;
-                padding: 0 1px !important;
-            }
-             div[data-testid="stButton"] button {
-                padding: 0px !important;
-                font-size: 2vw !important; /* Aun mas pequeño para mensual */
-                min-height: 0px !important;
-                height: 25px !important;
-                line-height: normal !important;
-            }
-             div[data-testid="stButton"] button p {
-                font-size: 2vw !important;
-            }
-            div[data-testid="column"] div[data-testid="stMarkdown"] p {
-                 font-size: 2.5vw !important;
-                 margin-bottom: 0px !important;
-            }
-            
-            /* Ajustes EXTRA para móvil vertical (Portrait) */
-             @media (max-width: 480px) {
-                div[data-testid="stButton"] button {
-                    font-size: 2.5vw !important;
+            /* Ajustes PORTRAIT MENSUAL */
+            @media (orientation: portrait) and (max-width: 600px) {
+                 div[data-testid="stHorizontalBlock"] {
+                    flex-direction: row !important;
+                    flex-wrap: nowrap !important; /* Asegurar no wrap */
+                 }
+                 div[data-testid="column"] {
+                    flex: 0 0 14.28% !important;
+                    max-width: 14.28% !important;
+                    min-width: 1px !important;
+                    padding: 0 1px !important;
+                 }
+                 div[data-testid="stButton"] button {
+                    padding: 0px !important;
+                    font-size: 1.8vw !important; /* Aún más pequeño */
+                    min-height: 15px !important;
                     height: 20px !important;
                 }
                  div[data-testid="stButton"] button p {
-                    font-size: 2.5vw !important;
+                    font-size: 1.8vw !important;
                 }
-                 /* Titulo DIA ultra pequeño */
                 div[data-testid="column"] div[data-testid="stMarkdown"] p {
-                     font-size: 3vw !important;
+                     font-size: 2vw !important;
+                     margin: 0 !important;
                 }
-             }
+            }
         }
         </style>
     """, unsafe_allow_html=True)
