@@ -9,5 +9,16 @@
         "fecha_fin": null,
         "dia_completo": false,
         "hora": "16:30"
+    },
+    {
+        "id": 1768473594,
+        "titulo": "Examen \u00c9tica",
+        "prioridad": "Importante",
+        "tipo": "Examen",
+        "estado": "Pendiente",
+        "fecha": "2026-02-04",
+        "fecha_fin": null,
+        "dia_completo": false,
+        "hora": "16:30"
     }
 ]
