@@ -1032,39 +1032,51 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
             /* Ajustes BASICOS para móvil (Tablet/Horizontal) */
             @media (max-width: 900px) {
                 div[data-testid="stHorizontalBlock"] {
+                    width: 100% !important;
+                    min-width: 0 !important;
                     flex-direction: row !important;
                     flex-wrap: nowrap !important;
                     overflow-x: hidden !important; 
+                    gap: 0 !important;
                 }
                 div[data-testid="column"] {
                     flex: 1 1 0 !important;
+                    width: auto !important;
                     min-width: 0 !important;
                 }
             }
             
-            /* Ajustes ESPECÍFICOS VERTICAL (PORTRAIT) - Aquí es donde forzamos todo */
+            /* Ajustes ESPECÍFICOS VERTICAL (PORTRAIT) - NUCLEAR */
             @media (orientation: portrait) and (max-width: 600px) {
+                 div[data-testid="stHorizontalBlock"] {
+                    width: 100% !important;
+                    display: flex !important;
+                 }
                  div[data-testid="column"] {
                     flex: 0 0 14.28% !important; /* Forzar ancho estricto */
+                    width: 14.28% !important;
                     max-width: 14.28% !important;
+                    min-width: 0 !important;
                     padding: 0 !important;
                     margin: 0 !important;
                  }
                  /* Letra minúscula para caber */
                  div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
-                    font-size: 2.2vw !important; 
-                    line-height: 1.0 !important;
-                    padding: 0 1px !important;
+                    font-size: 2vw !important; 
+                    line-height: normal !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
                 }
                 /* Botones comprimidos */
                 div[data-testid="stButton"] button {
-                    font-size: 2vw !important;
+                    font-size: 1.8vw !important;
                     padding: 0px !important;
-                    min-height: 15px !important;
+                    min-height: 12px !important;
                     height: auto !important;
+                    line-height: 1 !important;
                 }
                  div[data-testid="stButton"] button p {
-                    font-size: 2vw !important;
+                    font-size: 1.8vw !important;
                     padding: 0 !important;
                 }
             }
@@ -1227,30 +1239,38 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
     # CSS HACK force horizontal
     st.markdown("""
         <style>
-            /* Ajustes PORTRAIT MENSUAL */
+            /* Ajustes PORTRAIT MENSUAL - NUCLEAR */
             @media (orientation: portrait) and (max-width: 600px) {
                  div[data-testid="stHorizontalBlock"] {
+                    width: 100% !important;
+                    min-width: 0 !important;
                     flex-direction: row !important;
                     flex-wrap: nowrap !important; /* Asegurar no wrap */
+                    gap: 0 !important;
                  }
                  div[data-testid="column"] {
                     flex: 0 0 14.28% !important;
+                    width: 14.28% !important;
                     max-width: 14.28% !important;
-                    min-width: 1px !important;
-                    padding: 0 1px !important;
+                    min-width: 0 !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
                  }
                  div[data-testid="stButton"] button {
                     padding: 0px !important;
-                    font-size: 1.8vw !important; /* Aún más pequeño */
-                    min-height: 15px !important;
-                    height: 20px !important;
+                    font-size: 1.5vw !important; /* Aún más pequeño */
+                    min-height: 12px !important;
+                    height: auto !important;
+                    line-height: 1 !important;
                 }
                  div[data-testid="stButton"] button p {
-                    font-size: 1.8vw !important;
+                    font-size: 1.5vw !important;
+                    padding: 0 !important;
                 }
                 div[data-testid="column"] div[data-testid="stMarkdown"] p {
-                     font-size: 2vw !important;
+                     font-size: 1.8vw !important;
                      margin: 0 !important;
+                     padding: 0 !important;
                 }
             }
         }
