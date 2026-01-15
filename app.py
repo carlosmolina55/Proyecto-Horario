@@ -247,72 +247,109 @@ def actualizar_horario_sevilla(driver=None):
         driver.get(url)
         wait = WebDriverWait(driver, 10)
         
-        # Cookies
+        # Cookies: Intentar varios textos
         try:
-            # Buscar texto 'Aceptar' o similar en botones
             btns = driver.find_elements(By.TAG_NAME, "button")
             for b in btns:
-                if "Aceptar" in b.text:
+                txt = b.text.lower()
+                if "aceptar" in txt or "accept" in txt or "consentir" in txt:
                     b.click()
                     break
             time_lib.sleep(1)
         except: pass
         
-        # Matches logic based on inspection
-        # Selector for rows: tr.styled__TableRow-sc-43wy8s-4:not(.row-more-info)
-        # Using a broader aproach with classes
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "tr")))
-        filas = driver.find_elements(By.CSS_SELECTOR, "tr.styled__TableRow-sc-43wy8s-4")
+        # Esperar a tabla
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+        
+        # Estrategia Robusta: Buscar todas las filas y filtrar las que tengan fecha
+        filas = driver.find_elements(By.TAG_NAME, "tr")
         
         for fila in filas:
-            if "row-more-info" in fila.get_attribute("class"): continue
+            # Ignorar filas de info extra
+            if "more-info" in fila.get_attribute("class") or "more-info" in fila.get_attribute("outerHTML"):
+                 continue
             
             try:
-                # Fecha
-                fecha_el = fila.find_element(By.CSS_SELECTOR, "td[type='date'] p")
-                fecha_txt = fecha_el.text # "18 ENE. 25" format usually
+                # Verificar si es una fila de partido buscando la celda de fecha
+                fechas = fila.find_elements(By.CSS_SELECTOR, "td[type='date'] p")
+                if not fechas: continue
                 
-                # Parsear fecha "18 ENE. 25" -> YYYY-MM-DD
-                # Diccionario meses
+                fecha_txt = fechas[0].text.strip() # "18 ENE. 25"
+                
+                # Parsear fecha
                 meses_es = {"ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6, "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12}
-                parts = fecha_txt.replace(".", "").split(" ")
+                
+                # Limpieza: "19 ENE. 26" -> ["19", "ENE", "26"]
+                parts = fecha_txt.replace(".", "").upper().split(" ")
+                
                 if len(parts) >= 3:
                     dia = int(parts[0])
-                    mes = meses_es.get(parts[1].upper(), 1)
+                    # Buscar el mes que coincida parcialmente
+                    mes_str = parts[1]
+                    mes = 1
+                    for k,v in meses_es.items():
+                        if k in mes_str:
+                            mes = v
+                            break
+                    
                     anio = 2000 + int(parts[2])
                     fecha_obj = date(anio, mes, dia)
                     fecha_iso = fecha_obj.strftime("%Y-%m-%d")
-                else: continue
+                else:
+                    continue
                 
                 # Hora
                 hora_el = fila.find_element(By.CSS_SELECTOR, "td[type='time'] p")
-                hora_txt = hora_el.text # "21:00" or "-- : --"
+                hora_txt = hora_el.text.strip()
                 
                 es_dia_completo = False
                 if "--" in hora_txt:
                     es_dia_completo = True
                     hora_txt = None
                 
-                # Equipos
-                # Home: div.styled__ShieldStyled-sc-2hkd8m-2:nth-child(1) p
-                # Away: div.styled__ShieldStyled-sc-2hkd8m-2:nth-child(3) p
-                equipos = fila.find_elements(By.CSS_SELECTOR, "div.styled__ShieldStyled-sc-2hkd8m-2 p")
-                local_name = equipos[0].text if len(equipos) > 0 else "Unknown"
-                visitante_name = equipos[1].text if len(equipos) > 1 else "Unknown" # index 1 bc scraping gets p texts, might need nth-child checks if reliable
+                # Equipos: Buscamos los escudos/nombres
+                # La estructura suele ser Home - VS - Away.
+                # Buscamos divs que parezcan equipos (suelen tener clase ShieldStyled o similar, o simplemente p)
+                # Vamos a buscar todos los parrafos en la fila y deducir
+                ps = fila.find_elements(By.TAG_NAME, "p")
+                # El orden suele ser: Fecha, Hora, Equipo1, (VS), Equipo2, TV...
+                # Filtramos los textos para excluir fecha y hora ya conocidos
                 
-                # Si falla lo anterior, probar logica de hijos directos del contenedor de equipos
-                # Buscamos 'Sevilla FC'
+                texts = [p.text for p in ps if p.text and p.text != fecha_txt and p.text != hora_txt and "VS" not in p.text]
+                # texts deberia tener [Equipo1, Equipo2, ...]
+                
+                local_name = "Desconocido"
+                visitante_name = "Desconocido"
+                
+                # Fallback: selectores especificos si existen
+                try:
+                     equipos_divs = fila.find_elements(By.CSS_SELECTOR, "div[class*='ShieldStyled'] p")
+                     if len(equipos_divs) >= 2:
+                         local_name = equipos_divs[0].text
+                         visitante_name = equipos_divs[1].text
+                     elif len(texts) >= 2: # Fallback a lista plana
+                         local_name = texts[0]
+                         visitante_name = texts[1]
+                except:
+                     if len(texts) >= 2:
+                         local_name = texts[0]
+                         visitante_name = texts[1]
+
+                # Determinar Casa/Fuera
                 ubicacion = "Fuera"
-                if "Sevilla" in local_name:
+                rival = local_name
+                
+                if "Sevilla" in local_name or "SFC" in local_name:
                     ubicacion = "Casa"
                     rival = visitante_name
-                else:
+                elif "Sevilla" in visitante_name or "SFC" in visitante_name:
+                    ubicacion = "Fuera"
                     rival = local_name
                 
                 data_futbol.append({
                     "titulo": f"Sevilla FC vs {rival}",
-                    "asignatura": "Fútbol", # Para agrupar si hace falta
-                    "aula": ubicacion, # Casa / Fuera
+                    "asignatura": "Fútbol",
+                    "aula": ubicacion,
                     "fecha": fecha_iso,
                     "hora": hora_txt,
                     "dia_completo": es_dia_completo,
@@ -320,7 +357,7 @@ def actualizar_horario_sevilla(driver=None):
                 })
                 
             except Exception as e_row: 
-                # print(f"Error row: {e_row}")
+                # print(f"Error parsing row: {e_row}")
                 pass
                 
         if driver_propio: driver.quit()
