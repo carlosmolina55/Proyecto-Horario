@@ -1115,7 +1115,7 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
                 /* EXCEPCION: Restaurar layout normal dentro de los Diálogos (Popups) */
                 div[data-testid="stDialog"] div[data-testid="stHorizontalBlock"] {
                     display: flex !important;
-                    gap: 5px !important; 
+                    gap: 10px !important; 
                     grid-template-columns: none !important;
                 }
                 div[data-testid="stDialog"] div[data-testid="column"] {
@@ -1123,7 +1123,6 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     width: auto !important;
                     max-width: none !important;
                     min-width: 0 !important;
-                    padding: 0 5px !important;
                 }
             }
         }
