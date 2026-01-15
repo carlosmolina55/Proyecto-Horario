@@ -218,6 +218,7 @@ def actualizar_horario_clases(force=False):
 
                         data_clases.append({
                             "asignatura": asig,
+                            "titulo": asig, # Para consistencia con el resto de la app
                             "aula": aula,
                             "fecha": fecha_clase,
                             "hora": hora_text,
@@ -1284,6 +1285,7 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     elif item['tipo'] == 'tarea': icon = item.get('msg_icon', "📝")
                     elif item.get('es_rutina'): icon = "🔄"
                     
+                    title_full = item['titulo']
                     label_m = f"{icon} {title_full}" # Ahora mostramos icono Y titulo
                     
                     # Key única mensual
@@ -1294,6 +1296,8 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     
                     # Tooltip ayuda, label truncado si es muy largo visualmente lo corta streamlit
                     if st.button(label_m, key=key_m, help=f"{item['hora_sort']} - {title_full}", use_container_width=True):
+                        # Asegurar que raw tenga titulo para el dialog
+                        if 'titulo' not in item['raw']: item['raw']['titulo'] = item['titulo']
                         mostrar_detalle_item(item['raw'])
 
 
