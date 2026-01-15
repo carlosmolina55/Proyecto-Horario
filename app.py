@@ -1112,23 +1112,51 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     margin: 0 auto !important;
                 }
                 
-                /* EXCEPCION: Restaurar layout normal dentro de los Diálogos (Popups) */
+                /* EXCEPCION TOTAL: RESETEAR TODO DENTRO DEL DIALOGO */
+                div[data-testid="stDialog"] * {
+                    all: revert; /* Intento de reset, pero reforzamos abajo */
+                    font-family: "Source Sans Pro", sans-serif !important;
+                }
+                
+                div[data-testid="stDialog"] h1, div[data-testid="stDialog"] h2, div[data-testid="stDialog"] h3 {
+                     font-size: 1.5rem !important;
+                     color: var(--text-color) !important;
+                }
+
                 div[data-testid="stDialog"] div[data-testid="stHorizontalBlock"] {
                     display: flex !important;
-                    gap: 10px !important; 
-                    grid-template-columns: none !important;
+                    flex-direction: row !important;
+                    gap: 10px !important;
+                    width: 100% !important;
+                    background-color: transparent !important;
                 }
-                /* Columna 1 (Icono): Pequeña */
+                
+                div[data-testid="stDialog"] div[data-testid="column"] {
+                    flex: 1 !important; /* Dejar que fluya natural */
+                    width: auto !important;
+                    min-width: 0 !important;
+                    max-width: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                
+                /* Resetear textos especificos */
+                div[data-testid="stDialog"] p, div[data-testid="stDialog"] li, div[data-testid="stDialog"] div, div[data-testid="stDialog"] span, div[data-testid="stDialog"] strong {
+                    font-size: 16px !important;
+                    line-height: 1.4 !important;
+                    text-align: left !important;
+                    white-space: normal !important;
+                    overflow: visible !important;
+                    width: auto !important;
+                    color: inherit !important;
+                }
+                
+                /* Restaurar columna 1 y 2 */
                 div[data-testid="stDialog"] div[data-testid="column"]:nth-child(1) {
-                    flex: 1 !important;
-                    width: auto !important;
-                    min-width: 0 !important;
+                    flex: 0 0 50px !important; /* Ancho fijo para icono */
                 }
-                /* Columna 2 (Titulo): Grande */
-                 div[data-testid="stDialog"] div[data-testid="column"]:nth-child(2) {
-                    flex: 5 !important;
-                    width: auto !important;
-                    min-width: 0 !important;
+                div[data-testid="stDialog"] div[data-testid="column"]:nth-child(2) {
+                    flex: 1 !important; /* El resto para texto */
                 }
             }
         }
