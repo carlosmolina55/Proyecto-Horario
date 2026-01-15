@@ -99,12 +99,12 @@
         "hora": null
     },
     {
-        "id": 111111111,
-        "titulo": "TEST OVERDUE TASK",
-        "prioridad": "Urgente",
-        "tipo": "Otro",
+        "id": 1768481482,
+        "titulo": "Prueba",
+        "prioridad": "Normal",
+        "tipo": "Examen",
         "estado": "Pendiente",
-        "fecha": "2026-01-10",
+        "fecha": "2026-01-14",
         "fecha_fin": null,
         "dia_completo": true,
         "hora": null
