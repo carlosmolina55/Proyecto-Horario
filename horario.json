@@ -91,5 +91,16 @@
         "fecha": "2026-01-17",
         "hora_inicio": "18:00",
         "hora_fin": "21:00"
+    },
+    {
+        "id": 1768474370,
+        "titulo": "Misa Buen Pastor",
+        "ubicacion": "Buen Pastor",
+        "tipo": "Evento",
+        "es_rutina": false,
+        "dias_semana": [],
+        "fecha": "2026-01-17",
+        "hora_inicio": "12:30",
+        "hora_fin": "13:30"
     }
 ]
