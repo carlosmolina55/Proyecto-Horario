@@ -1026,28 +1026,41 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
                             c2.write("✅")
 
 def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_scraped):
-    # CSS HACK: Forzar layout horizontal en móvil para columnas
+    # CSS HACK: Forzar layout horizontal en móvil con escalado automático
     st.markdown("""
         <style>
         @media (max-width: 768px) {
+            /* Forzar fila sin scroll */
             div[data-testid="stHorizontalBlock"] {
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
-                overflow-x: auto !important;
+                overflow-x: hidden !important; /* Sin scroll */
+                gap: 1px !important; /* Espacio mínimo */
             }
+            /* Columnas flexibles que encogen */
             div[data-testid="column"] {
                 flex: 1 1 0 !important;
-                min-width: 0 !important;
-                padding: 0 2px !important;
+                min-width: 0px !important;
+                padding: 0 !important;
             }
-            /* Reducir tamaño fuente en móvil */
-            div[data-testid="column"] p, div[data-testid="column"] div {
-                font-size: 0.8rem !important;
+            /* Texto Headers responsivo (vw) */
+            div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
+                font-size: 2.8vw !important; /* Escala segun ancho pantalla */
+                line-height: 1.1 !important;
             }
-            /* Ajustar botones en móvil */
+            /* Botones ultra compactos y escalables */
             div[data-testid="stButton"] button {
-                padding: 0.2rem 0.1rem !important;
-                font-size: 0.7rem !important;
+                padding: 2px 1px !important;
+                font-size: 2.4vw !important; /* Texto botón escala también */
+                min-height: auto !important;
+                height: auto !important;
+                line-height: 1.2 !important;
+                white-space: nowrap !important; 
+                overflow: hidden !important;
+                border-radius: 4px !important;
+            }
+            div[data-testid="stButton"] button p {
+                font-size: 2.4vw !important;
             }
         }
         </style>
@@ -1212,18 +1225,28 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
             div[data-testid="stHorizontalBlock"] {
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
-                overflow-x: auto !important;
+                overflow-x: hidden !important;
+                gap: 1px !important;
             }
             div[data-testid="column"] {
                 flex: 1 1 0 !important;
-                min-width: 0 !important;
-                padding: 0 1px !important;
+                min-width: 0px !important;
+                padding: 0 !important;
             }
              div[data-testid="stButton"] button {
-                padding: 0rem !important;
-                font-size: 0.6rem !important;
+                padding: 0px !important;
+                font-size: 2vw !important; /* Aun mas pequeño para mensual */
                 min-height: 0px !important;
-                height: 30px !important;
+                height: 25px !important;
+                line-height: normal !important;
+            }
+             div[data-testid="stButton"] button p {
+                font-size: 2vw !important;
+            }
+            /* Numeros de dia */
+            div[data-testid="column"] div[data-testid="stMarkdown"] p {
+                 font-size: 2.5vw !important;
+                 margin-bottom: 0px !important;
             }
         }
         </style>
