@@ -1063,6 +1063,20 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
             div[data-testid="stButton"] button p {
                 font-size: 2.4vw !important;
             }
+            
+            /* Ajustes EXTRA para móvil vertical (Portrait) */
+            @media (max-width: 480px) {
+                div[data-testid="column"] p, div[data-testid="column"] div, div[data-testid="column"] strong {
+                    font-size: 3.2vw !important; /* Un poco mas grande relativo al ancho muy pequeño */
+                }
+                div[data-testid="stButton"] button {
+                    font-size: 2.8vw !important;
+                    padding: 0px !important;
+                }
+                 div[data-testid="stButton"] button p {
+                    font-size: 2.8vw !important;
+                }
+            }
         }
         </style>
     """, unsafe_allow_html=True)
@@ -1245,11 +1259,25 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
              div[data-testid="stButton"] button p {
                 font-size: 2vw !important;
             }
-            /* Numeros de dia */
             div[data-testid="column"] div[data-testid="stMarkdown"] p {
                  font-size: 2.5vw !important;
                  margin-bottom: 0px !important;
             }
+            
+            /* Ajustes EXTRA para móvil vertical (Portrait) */
+             @media (max-width: 480px) {
+                div[data-testid="stButton"] button {
+                    font-size: 2.5vw !important;
+                    height: 20px !important;
+                }
+                 div[data-testid="stButton"] button p {
+                    font-size: 2.5vw !important;
+                }
+                 /* Titulo DIA ultra pequeño */
+                div[data-testid="column"] div[data-testid="stMarkdown"] p {
+                     font-size: 3vw !important;
+                }
+             }
         }
         </style>
     """, unsafe_allow_html=True)
