@@ -952,36 +952,6 @@ def main():
 # --- IMPLEMENTACIÓN DE VISTAS ---
 
 def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_clases_scraped):
-    # --- AVISO DE TAREAS ATRASADAS (DESPLEGABLE) ---
-    hoy_real = get_madrid_date()
-    tareas_atrasadas = []
-    
-    for t in tareas:
-        if t.get('estado') == 'Completada': continue
-        
-        es_atrasada = False
-        # Caso 1: Tiene Deadline y ya pasó
-        if t.get('fecha_fin'):
-            try:
-                f_fin = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
-                if f_fin < hoy_real: es_atrasada = True
-            except: pass
-        # Caso 2: No tiene Deadline, pero la fecha de realización pasó (y no se completó)
-        elif t.get('fecha'):
-             try:
-                f_ini = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
-                if f_ini < hoy_real: es_atrasada = True
-            except: pass
-            
-        if es_atrasada:
-            tareas_atrasadas.append(t)
-            
-    if tareas_atrasadas:
-        with st.expander(f"⚠️ Tienes {len(tareas_atrasadas)} tareas atrasadas pendientes", expanded=False):
-            for atrasada in tareas_atrasadas:
-                # Mostrar lo mismo que en vista gestión o algo simplificado
-                st.markdown(f"🔴 **{atrasada['titulo']}** (Fecha: {atrasada.get('fecha_fin') or atrasada.get('fecha')})")
-
     col_horario, col_tareas = st.columns([1, 2])
     
     with col_horario:
