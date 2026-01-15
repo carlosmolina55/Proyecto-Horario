@@ -1042,18 +1042,21 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
         if is_selected:
             header_bg = "#1E90FF"
             header_border = "3px solid #1E90FF"
+            text_color = "white"
         elif is_today:
             header_bg = "#FF4B4B"
             header_border = "3px solid #FF4B4B"
+            text_color = "white"
         else:
             header_bg = "transparent" # o gris oscuro
             header_border = "1px solid #444"
+            text_color = "var(--text-color)"
             
         with col:
             # Header
             st.markdown(f"""
             <div style='text-align: center; border-bottom: {header_border}; margin-bottom:5px;'>
-                <div style='background-color: {header_bg}; color: white; border-radius: 4px 4px 0 0; padding: 2px;'>
+                <div style='background-color: {header_bg}; color: {text_color}; border-radius: 4px 4px 0 0; padding: 2px;'>
                     <strong>{dias_semana_lbl[i]}</strong>
                 </div>
                 <div style='font-size:1.2em; padding: 5px;'>{dia_actual.day}</div>
@@ -1209,7 +1212,7 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     border_style = "2px solid #1E90FF"
                     num_color = "#1E90FF"
                 
-                st.markdown(f"<div style='text-align: right; font-weight: bold; border-bottom: {border_style}; margin-bottom: 4px; color: {num_color};'>{day_num}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; font-weight: bold; border-bottom: {border_style}; margin-bottom: 4px; color: {num_color};'>{day_num} <span style='font-size:0.75em; opacity:0.7; font-weight:normal'>{DIAS_SEMANA_ABR[i]}</span></div>", unsafe_allow_html=True)
                 
                 # --- RECOLECCIÓN DE ITEMS ---
                 items_visuales = []
