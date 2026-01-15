@@ -606,7 +606,17 @@ def render_vista_gestionar_todas(tareas):
         if not horario:
             st.info("No hay horarios ni eventos personalizados creados.")
         else:
-            for h in horario:
+            # Separar y Ordenar
+            eventos_unicos = [h for h in horario if not h.get('es_rutina')]
+            rutinas = [h for h in horario if h.get('es_rutina')]
+            
+            # Ordenar eventos por fecha (Ascendente: Mas antiguos/hoy primero -> Futuro)
+            # El usuario dijo "reciente a mas lejano", entendemos cronologico.
+            eventos_unicos.sort(key=lambda x: x.get('fecha', '9999-99-99'))
+            
+            lista_ordenada = eventos_unicos + rutinas
+            
+            for h in lista_ordenada:
                 with st.container(border=True):
                     c1, c2 = st.columns([4, 1])
                     
