@@ -97,16 +97,5 @@
         "fecha_fin": "2026-01-25",
         "dia_completo": true,
         "hora": null
-    },
-    {
-        "id": 111111111,
-        "titulo": "TEST OVERDUE TASK",
-        "prioridad": "Urgente",
-        "tipo": "Otro",
-        "estado": "Pendiente",
-        "fecha": "2026-01-10",
-        "fecha_fin": null,
-        "dia_completo": true,
-        "hora": null
     }
 ]
