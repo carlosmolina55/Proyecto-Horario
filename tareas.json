@@ -86,5 +86,16 @@
         "fecha_fin": null,
         "dia_completo": true,
         "hora": null
+    },
+    {
+        "id": 1768476616,
+        "titulo": "Abstract Congreso",
+        "prioridad": "Urgente",
+        "tipo": "Entrega",
+        "estado": "Pendiente",
+        "fecha": "2026-01-15",
+        "fecha_fin": "2026-01-25",
+        "dia_completo": true,
+        "hora": null
     }
 ]
