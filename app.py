@@ -1026,6 +1026,33 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
                             c2.write("✅")
 
 def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_scraped):
+    # CSS HACK: Forzar layout horizontal en móvil para columnas
+    st.markdown("""
+        <style>
+        @media (max-width: 768px) {
+            div[data-testid="stHorizontalBlock"] {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+            }
+            div[data-testid="column"] {
+                flex: 1 1 0 !important;
+                min-width: 0 !important;
+                padding: 0 2px !important;
+            }
+            /* Reducir tamaño fuente en móvil */
+            div[data-testid="column"] p, div[data-testid="column"] div {
+                font-size: 0.8rem !important;
+            }
+            /* Ajustar botones en móvil */
+            div[data-testid="stButton"] button {
+                padding: 0.2rem 0.1rem !important;
+                font-size: 0.7rem !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.subheader(f"Vista Semanal")
     
     start_of_week = fecha_base - timedelta(days=fecha_base.weekday())
@@ -1178,6 +1205,30 @@ NOMBRES_MESES = {
 DIAS_SEMANA_ABR = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
 def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_scraped):
+    # CSS HACK force horizontal
+    st.markdown("""
+        <style>
+        @media (max-width: 768px) {
+            div[data-testid="stHorizontalBlock"] {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+            }
+            div[data-testid="column"] {
+                flex: 1 1 0 !important;
+                min-width: 0 !important;
+                padding: 0 1px !important;
+            }
+             div[data-testid="stButton"] button {
+                padding: 0rem !important;
+                font-size: 0.6rem !important;
+                min-height: 0px !important;
+                height: 30px !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     nombre_mes = NOMBRES_MESES.get(fecha_base.month, "Mes")
     st.subheader(f"Vista Mensual - {nombre_mes} {fecha_base.year}")
     
