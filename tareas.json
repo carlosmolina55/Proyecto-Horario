@@ -92,10 +92,12 @@
         "titulo": "Responder correo protocolo",
         "prioridad": "Urgente",
         "tipo": "Otro",
-        "estado": "Pendiente",
+        "estado": "Completada",
         "fecha": "2026-01-16",
         "fecha_fin": "2026-01-21",
         "dia_completo": true,
-        "hora": null
+        "hora": null,
+        "msg": "\u23f3 4d",
+        "urgente": false
     }
 ]
