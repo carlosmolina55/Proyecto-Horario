@@ -97,5 +97,16 @@
         "fecha_fin": "2026-01-28",
         "dia_completo": true,
         "hora": null
+    },
+    {
+        "id": 1769020812,
+        "titulo": "Fin Plazo Beca FPU",
+        "prioridad": "Urgente",
+        "tipo": "Otro",
+        "estado": "Pendiente",
+        "fecha": "2026-01-21",
+        "fecha_fin": "2026-02-14",
+        "dia_completo": true,
+        "hora": null
     }
 ]
