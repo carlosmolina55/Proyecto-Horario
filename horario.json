@@ -71,17 +71,6 @@
         "hora_fin": "15:00"
     },
     {
-        "id": 1768481217,
-        "titulo": "Recre-Estepona",
-        "ubicacion": "Huelva",
-        "tipo": "Evento",
-        "es_rutina": false,
-        "dias_semana": [],
-        "fecha": "2026-01-18",
-        "hora_inicio": "12:00",
-        "hora_fin": "14:00"
-    },
-    {
         "id": 1768484646,
         "titulo": "C&P Mingo",
         "ubicacion": "Presente Perfecto",
