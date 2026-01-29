@@ -124,5 +124,16 @@
         "fecha": "2026-02-02",
         "hora_inicio": "11:00",
         "hora_fin": "12:00"
+    },
+    {
+        "id": 1769685431,
+        "titulo": "Entrevista CATEC",
+        "ubicacion": "Teams",
+        "tipo": "Evento",
+        "es_rutina": false,
+        "dias_semana": [],
+        "fecha": "2026-02-04",
+        "hora_inicio": "13:30",
+        "hora_fin": "14:15"
     }
 ]
