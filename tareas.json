@@ -4,11 +4,13 @@
         "titulo": "Examen \u00c9tica",
         "prioridad": "Importante",
         "tipo": "Examen",
-        "estado": "Pendiente",
+        "estado": "Completada",
         "fecha": "2026-02-04",
         "fecha_fin": null,
         "dia_completo": false,
-        "hora": "16:30"
+        "hora": "16:30",
+        "msg": "",
+        "urgente": false
     },
     {
         "id": 1768473699,
