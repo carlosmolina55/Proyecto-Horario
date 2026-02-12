@@ -15,10 +15,12 @@
         "titulo": "Fin Plazo Beca FPU",
         "prioridad": "Urgente",
         "tipo": "Otro",
-        "estado": "Pendiente",
+        "estado": "Completada",
         "fecha": "2026-01-21",
         "fecha_fin": "2026-02-14",
         "dia_completo": true,
-        "hora": null
+        "hora": null,
+        "msg": "\u23f3 2d",
+        "urgente": false
     }
 ]
