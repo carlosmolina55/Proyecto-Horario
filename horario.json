@@ -49,17 +49,6 @@
         "hora_fin": "14:00"
     },
     {
-        "id": 1768742784,
-        "titulo": "Cumple Fernando",
-        "ubicacion": ".",
-        "tipo": "Evento",
-        "es_rutina": false,
-        "dias_semana": [],
-        "fecha": "2026-01-24",
-        "hora_inicio": "21:00",
-        "hora_fin": "22:45"
-    },
-    {
         "id": 1769209546,
         "titulo": "Audiencia ACCUA",
         "ubicacion": "Webex",
