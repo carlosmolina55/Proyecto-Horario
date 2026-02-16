@@ -27,17 +27,6 @@
         "hora_fin": "14:00"
     },
     {
-        "id": 1768474174,
-        "titulo": "Despedida Alicia",
-        "ubicacion": "Hacienda",
-        "tipo": "Evento",
-        "es_rutina": false,
-        "dias_semana": [],
-        "fecha": "2026-01-25",
-        "hora_inicio": "12:00",
-        "hora_fin": "17:00"
-    },
-    {
         "id": 1768560123,
         "titulo": "Premio Mejor Promoci\u00f3n",
         "ubicacion": "C\u00edrculo de la Amistad, C\u00f3rdoba",
