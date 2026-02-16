@@ -1,16 +1,5 @@
 [
     {
-        "id": 1768474087,
-        "titulo": "Mesa redonda Stem",
-        "ubicacion": "Loyola",
-        "tipo": "Evento",
-        "es_rutina": false,
-        "dias_semana": [],
-        "fecha": "2026-02-03",
-        "hora_inicio": "10:30",
-        "hora_fin": "14:00"
-    },
-    {
         "id": 1768560123,
         "titulo": "Premio Mejor Promoci\u00f3n",
         "ubicacion": "C\u00edrculo de la Amistad, C\u00f3rdoba",
