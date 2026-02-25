@@ -25,7 +25,7 @@ st.set_page_config(
 
 # --- CONSTANTES ---
 FILE_PATH = "tareas.json"
-REPO_NAME = "MrCordobex/Personal-project"
+REPO_NAME = "carlosmolina55/Proyecto-Horario"
 TIMEZONE = pytz.timezone("Europe/Madrid")
 HORARIO_FILE = "horario_clases.json" # Archivo local/remoto para clases scrapeadas
 
@@ -38,7 +38,7 @@ def get_madrid_date():
 
 # --- CONFIGURACIÓN DE USUARIO (CAMBIAR ESTO) ---
 # Nombre del repositorio donde se guardará el archivo tareas.json
-REPO_NAME = "MrCordobex/Personal-project"  # <-- ¡ACTUALIZA ESTO CON TU REPO!
+REPO_NAME = "carlosmolina55/Proyecto-Horario"
 FILE_PATH = "tareas.json"
 
 
@@ -126,7 +126,7 @@ def actualizar_horario_clases(force=False, driver=None):
     data_clases = []
     
     try:
-        url = "https://portales.uloyola.es/LoyolaHorario/horario.xhtml?curso=2025%2F26&tipo=M&titu=2169&campus=2&ncurso=1&grupo=A"
+        url = "https://portales.uloyola.es/LoyolaHorario/horario.xhtml?curso=2025%2F26&tipo=M&titu=2168&campus=2&ncurso=1&grupo=A"
         driver.get(url)
         
         # Esperar carga inicial
@@ -233,7 +233,7 @@ def actualizar_horario_clases(force=False, driver=None):
         return []
 
 def actualizar_horario_sevilla(driver=None):
-    """Scrapea partidos del Sevilla FC"""
+    """Scrapea SOLO partidos en CASA del Sevilla FC (Nervión)."""
     driver_propio = False
     if not driver:
         driver = init_driver()
@@ -245,7 +245,6 @@ def actualizar_horario_sevilla(driver=None):
     try:
         url = "https://www.laliga.com/clubes/sevilla-fc/proximos-partidos"
         driver.get(url)
-        wait = WebDriverWait(driver, 10)
         
         # Cookies: Intentar varios textos
         try:
@@ -258,15 +257,13 @@ def actualizar_horario_sevilla(driver=None):
             time_lib.sleep(1)
         except: pass
         
-        # Estrategia Robusta V2: Basada en el texto que ve el usuario
-        # "LUN 19.01.2026 \n 21:00 \n Elche CF \n VS \n Sevilla FC ..."
         import re
         
+        time_lib.sleep(2)  # Esperar carga de la tabla
         filas = driver.find_elements(By.TAG_NAME, "tr")
         
         for fila in filas:
-            # Ignorar filas de info extra
-            if "more-info" in fila.get_attribute("class"): continue
+            if "more-info" in (fila.get_attribute("class") or ""): continue
             
             try:
                 texto_fila = fila.text
@@ -274,10 +271,7 @@ def actualizar_horario_sevilla(driver=None):
                 
                 # 1. Buscar Fecha (DD.MM.YYYY)
                 match_fecha = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", texto_fila)
-                if not match_fecha:
-                     # Intentar formato anterior por si acaso (18 ENE. 25)
-                     # (Logica anterior simplificada o omitida si asumimos el cambio total)
-                     continue
+                if not match_fecha: continue
                 
                 dia = int(match_fecha.group(1))
                 mes = int(match_fecha.group(2))
@@ -286,79 +280,45 @@ def actualizar_horario_sevilla(driver=None):
                 fecha_iso = fecha_obj.strftime("%Y-%m-%d")
                 
                 # 2. Buscar Hora (HH:MM o -- : --)
-                # Buscamos patron HH:MM
                 match_hora = re.search(r"(\d{2}:\d{2})", texto_fila)
                 if match_hora:
                     hora_txt = match_hora.group(1)
                     es_dia_completo = False
-                elif "--" in texto_fila and ":" in texto_fila:
-                    hora_txt = None
-                    es_dia_completo = True
                 else:
-                    # Si no hay hora explicita, asumimos TBD
                     hora_txt = None
                     es_dia_completo = True
                 
-                # 3. Equipos
-                # Dividimos por saltos de linea
+                # 3. Detectar si es partido en CASA
+                # En la tabla: Local VS Visitante
+                # Si el primer equipo (antes de VS) es Sevilla FC → juega en casa
                 lineas = [l.strip() for l in texto_fila.split('\n') if l.strip()]
                 
-                # Identificamos el índice del "VS"
                 idx_vs = -1
                 for i, l in enumerate(lineas):
                     if l.upper() == "VS":
                         idx_vs = i
                         break
                 
-                local_name = "Desconocido"
-                visitante_name = "Desconocido"
+                if idx_vs <= 0: continue
                 
-                if idx_vs > 0 and idx_vs + 1 < len(lineas):
-                    local_name = lineas[idx_vs - 1]
-                    visitante_name = lineas[idx_vs + 1]
-                else:
-                    # Fallback si el VS no está visualmente o el texto es distinto
-                    # A veces salen equipos antes que la hora o despues.
-                    # Si tenemos la fecha y hora, los equipos suelen ser los textos "largos" adyacentes
-                    pass
+                local_name = lineas[idx_vs - 1].lower()
                 
-                # 4. Casa / Fuera
-                def format_team(name):
-                    # Capitalize nicely. "SEVILLA FC" -> "Sevilla FC"
-                    # .title() hace "Sevilla Fc".
-                    parts = name.strip().split(" ")
-                    fixed = []
-                    for p in parts:
-                        if p.lower() in ["fc", "cf", "sfc", "cd"]:
-                            fixed.append(p.upper())
-                        elif p.lower() in ["de", "del", "la", "el"]:
-                             fixed.append(p.lower())
-                        else:
-                            fixed.append(p.capitalize())
-                    return " ".join(fixed)
-
-                local_fmt = format_team(local_name)
-                visitante_fmt = format_team(visitante_name)
-                
-                ubicacion = "Fuera"
-                if "sevilla" in local_name.lower() or "sfc" in local_name.lower():
-                    ubicacion = "Casa"
-                
-                # Titulo siempre Local vs Visitante
-                titulo_partido = f"{local_fmt} vs {visitante_fmt}"
+                # Solo guardar si Sevilla es LOCAL (juega en casa / Nervión)
+                es_casa = "sevilla" in local_name
+                if not es_casa:
+                    continue
 
                 data_futbol.append({
-                    "titulo": titulo_partido,
+                    "titulo": "⚽ Partido en Nervión",
                     "asignatura": "Fútbol",
-                    "aula": ubicacion,
+                    "aula": "Nervión",
                     "fecha": fecha_iso,
                     "hora": hora_txt,
                     "dia_completo": es_dia_completo,
                     "es_futbol": True
                 })
                 
-            except Exception as e_row: 
-                # print(f"Error parsing row: {e_row}")
+            except Exception:
                 pass
                 
         if driver_propio: driver.quit()
@@ -490,96 +450,30 @@ def gestionar_horario(accion, nuevo_item=None, id_eliminar=None, item_actualizad
         st.error(f"Error guardando horario: {e}")
         return False
 
-# --- UI Y LÓGICA ---
-
-def main():
-    st.title("🎓 AutoGestor")
-
-    # --- NOTIFICACIONES GLOBLALES ---
-    if "mensaje_global" in st.session_state and st.session_state["mensaje_global"]:
-        tipo = st.session_state["mensaje_global"]["tipo"]
-        texto = st.session_state["mensaje_global"]["texto"]
-        if tipo == "exito":
-            st.success(texto)
-        elif tipo == "error":
-            st.error(texto)
-        st.session_state["mensaje_global"] = None
-       # --- GESTOR DE DATOS (PERSISTENCIA) ---
-    tareas = gestionar_tareas('leer')
-    horario_dinamico = gestionar_horario('leer')
-    
-    # --- LIMPIEZA AUTOMÁTICA ---
-    hoy_real = get_madrid_date()
-    tareas_filtradas = []
-    hubo_cambios_limpieza = False
-    
-    for t in tareas:
-        # Si es completada y vieja, fuera
-        es_vieja = False
-        try:
-            if t.get('fecha'):
-                f_t = datetime.strptime(t['fecha'], "%Y-%m-%d").date()
-                if f_t < hoy_real: es_vieja = True
-            if t.get('fecha_fin'): # Si tiene deadline y ya pasó hace tiempo también
-                f_f = datetime.strptime(t['fecha_fin'], "%Y-%m-%d").date()
-                if f_f < hoy_real: es_vieja = True
-        except: pass
-            
-        if t['estado'] == 'Completada' and es_vieja:
-            # Solo borrar si ya pasó el día
-             hubo_cambios_limpieza = True
-        else:
-            tareas_filtradas.append(t)
-            
-    if hubo_cambios_limpieza:
-        if gestionar_tareas('guardar_todo', lista_completa=tareas_filtradas):
-            st.toast("🧹 Se han eliminado tareas antiguas automáticamente.")
-            tareas = tareas_filtradas
-
-    # --- SIDEBAR GLOBAL ---
-    with st.sidebar:
-        st.header("👁️ Navegación")
-        # Menú ampliado
-        opciones_navegacion = ["Diaria", "Semanal", "Mensual", "---", "➕ Nueva Tarea", "➕ Nuevo Evento/Horario", "📋 Gestionar Todas"]
-        vista_actual = st.radio("Ir a:", opciones_navegacion, index=0, label_visibility="collapsed")
-        
-        st.divider()
-        st.header("📅 Control de Fecha")
-        fecha_seleccionada = st.date_input("Fecha Base", get_madrid_date())
-        st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b')}**")
-
-    # --- ENRUTADOR DE VISTAS ---
-    if vista_actual == "Diaria":
-        render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico)
-    elif vista_actual == "Semanal":
-        render_vista_semanal(tareas, fecha_seleccionada, horario_dinamico)
-    elif vista_actual == "Mensual":
-        render_vista_mensual(tareas, fecha_seleccionada, horario_dinamico)
-    elif vista_actual == "➕ Nueva Tarea":
-        render_vista_nueva_tarea()
-    elif vista_actual == "➕ Nuevo Evento/Horario":
-        render_vista_nuevo_horario()
-    elif vista_actual == "📋 Gestionar":
-        render_vista_gestionar_todas(tareas)
 
 # --- IMPLEMENTACIÓN DE VISTAS ---
 
 def render_vista_nuevo_horario():
-    st.subheader("➕ Añadir Nuevo Evento u Horario")
+    st.subheader("➕ Añadir Nuevo Evento")
     
     with st.container(border=True):
         c_conf, c_form = st.columns([1, 3])
         
         with c_conf:
             st.info("Tipo de Entrada")
-            tipo_entrada = st.radio("¿Qué vas a añadir?", ["🔄 Rutina Semanal", "📅 Evento Único"], key="type_schedule")
-            st.caption("Rutina: Se repite todas las semanas (ej. Gym, Clases).\nEvento: Ocurre un día específico.")
+            tipo_entrada = st.radio("¿Qué vas a añadir?", ["📅 Evento Único", "🔄 Rutina Semanal"], key="type_schedule")
+            st.caption("Evento: Ocurre un día específico (ej. Cita médico).\nRutina: Se repite todas las semanas (ej. Gym).")
+            
+            st.write("")
+            st.markdown("**🎨 Color del evento**")
+            color_evento = st.color_picker("Color", "#1E90FF", key="color_evento_new")
             
         with c_form:
-            titulo = st.text_input("Título / Asignatura", placeholder="Ej: Gimnasio, Matemáticas...")
-            ubicacion = st.text_input("Ubicación / Aula", placeholder="Ej: Gofit, Aula 23, Online...")
+            titulo = st.text_input("Título del evento", placeholder="Ej: Cita médico, Gimnasio, Reunión...")
             
             c1, c2 = st.columns(2)
+            ubicacion = c1.text_input("📍 Ubicación", placeholder="Ej: Hospital, Gym, Online...")
+            descripcion = c2.text_area("📝 Descripción (opcional)", placeholder="Detalles adicionales...", height=68)
             
             # Lógica Rutina vs Evento
             dias_seleccionados = []
@@ -596,14 +490,14 @@ def render_vista_nuevo_horario():
                 fecha_evento = st.date_input("Fecha del Evento", get_madrid_date())
                 
             # Horas
-            st.write("horario:")
+            st.write("🕒 Horario:")
             ch1, ch2, ch3 = st.columns([1, 1, 1])
             h_inicio = ch1.time_input("Hora Inicio", datetime.strptime("10:00", "%H:%M").time())
             h_fin = ch2.time_input("Hora Fin", datetime.strptime("11:00", "%H:%M").time())
-            # dia_completo = ch3.checkbox("Todo el día") # Por simplificar, horario siempre tiene horas por ahora
+            dia_completo = ch3.checkbox("📅 Todo el día", key="chk_all_day_event")
             
             st.write("")
-            if st.button("💾 Guardar Horario", type="primary", use_container_width=True):
+            if st.button("💾 Guardar Evento", type="primary", use_container_width=True):
                 if not titulo:
                     st.error("El título es obligatorio")
                     return
@@ -616,80 +510,67 @@ def render_vista_nuevo_horario():
                     "id": int(get_madrid_time().timestamp()),
                     "titulo": titulo,
                     "ubicacion": ubicacion,
+                    "descripcion": descripcion,
+                    "color": color_evento,
                     "tipo": "Rutina" if "Rutina" in tipo_entrada else "Evento",
                     "es_rutina": "Rutina" in tipo_entrada,
                     "dias_semana": dias_seleccionados,
                     "fecha": str(fecha_evento) if fecha_evento else None,
-                    "hora_inicio": str(h_inicio.strftime("%H:%M")),
-                    "hora_fin": str(h_fin.strftime("%H:%M"))
+                    "hora_inicio": str(h_inicio.strftime("%H:%M")) if not dia_completo else None,
+                    "hora_fin": str(h_fin.strftime("%H:%M")) if not dia_completo else None,
+                    "dia_completo": dia_completo
                 }
                 
                 gestionar_horario('crear', nuevo_item=nuevo_item)
-                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Horario guardado correctamente"}
+                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Evento guardado correctamente"}
                 st.rerun()
 
 def render_vista_nueva_tarea():
     st.subheader("➕ Añadir Nueva Tarea")
     
     with st.container(border=True):
-        col_tipo, col_form = st.columns([1, 3])
+        st.markdown("##### Datos de la Tarea")
         
-        with col_tipo:
-            st.info("Configuración Básica")
-            # Usar Key para mantener estado
-            modo_tarea = st.radio("Modo de Tarea", ["📅 Día concreto", "⏰ Deadline"], key="modo_tarea_new")
-            
-        with col_form:
-            # Quitamos st.form para permitir interactividad (checkbox muestra/oculta hora)
-            st.markdown("##### Estancia de Datos")
-            
-            tit = st.text_input("Título de la tarea", key="tit_new")
-            
-            c1, c2 = st.columns(2)
-            
-            # FECHAS
-            if "Deadline" in modo_tarea:
-                f_fin = c1.date_input("Fecha Límite (Deadline)", get_madrid_date(), key="date_deadline_new")
-                f_ini = None
+        tit = st.text_input("Título de la tarea", key="tit_new")
+        
+        c1, c2 = st.columns(2)
+        
+        # Siempre deadline
+        f_fin = c1.date_input("📅 Fecha Límite", get_madrid_date(), key="date_deadline_new")
+        
+        # HORA
+        chk_dia_completo = c2.checkbox("📅 Todo el día", value=True, key="chk_all_day_new")
+        
+        hora_seleccionada = None
+        if not chk_dia_completo:
+            hora_defecto = datetime.now().time().replace(minute=0, second=0)
+            hora_seleccionada = c2.time_input("🕒 Hora límite", hora_defecto, step=900, key="time_new")
+        
+        # RESTO DE CAMPOS
+        prio = c1.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], key="prio_new")
+        tipo = c2.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1], key="type_new")  # Excluir 'Clase'
+        
+        st.write("")
+        
+        # BOTON GUARDAR
+        if st.button("💾 Guardar Tarea", type="primary", use_container_width=True):
+            if not tit:
+                st.error("⚠️ El título es obligatorio.")
             else:
-                f_ini = c1.date_input("Fecha de Realización", get_madrid_date(), key="date_fix_new")
-                f_fin = None
-            
-            # HORA (Interactivo)
-            # Checkbox con estado real
-            chk_dia_completo = c2.checkbox("📅 Todo el día", value=True, key="chk_all_day_new")
-            
-            hora_seleccionada = None
-            if not chk_dia_completo:
-                # Si no es todo el día, mostramos el input de hora
-                hora_defecto = datetime.now().time().replace(minute=0, second=0)
-                hora_seleccionada = c2.time_input("Hora", hora_defecto, step=900, key="time_new") # step 15 min
-            
-            # RESTO DE CAMPOS
-            prio = c1.selectbox("Prioridad", ["Normal", "Importante", "Urgente"], key="prio_new")
-            tipo = c2.selectbox("Tipo / Asignatura", list(COLORES_TIPO.keys())[:-1], key="type_new") # Excluir 'Clase'
-            
-            st.write("") # Espacio
-            
-            # BOTON GUARDAR
-            if st.button("💾 Guardar Tarea", type="primary", use_container_width=True):
-                if not tit:
-                    st.error("⚠️ El título es obligatorio.")
-                else:
-                    nt = {
-                        "id": int(get_madrid_time().timestamp()), 
-                        "titulo": tit, 
-                        "prioridad": prio, 
-                        "tipo": tipo, 
-                        "estado": "Pendiente", 
-                        "fecha": str(f_ini) if f_ini else str(get_madrid_date()), 
-                        "fecha_fin": str(f_fin) if f_fin else None,
-                        "dia_completo": chk_dia_completo,
-                        "hora": str(hora_seleccionada.strftime("%H:%M")) if hora_seleccionada else None
-                    }
-                    gestionar_tareas('crear', nueva_tarea=nt)
-                    st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada correctamente"}
-                    st.rerun()
+                nt = {
+                    "id": int(get_madrid_time().timestamp()), 
+                    "titulo": tit, 
+                    "prioridad": prio, 
+                    "tipo": tipo, 
+                    "estado": "Pendiente", 
+                    "fecha": str(get_madrid_date()), 
+                    "fecha_fin": str(f_fin),
+                    "dia_completo": chk_dia_completo,
+                    "hora": str(hora_seleccionada.strftime("%H:%M")) if hora_seleccionada else None
+                }
+                gestionar_tareas('crear', nueva_tarea=nt)
+                st.session_state["mensaje_global"] = {"tipo": "exito", "texto": "💾 Tarea guardada correctamente"}
+                st.rerun()
 
 def render_vista_gestionar_todas(tareas):
     st.subheader("📋 Gestión Global")
@@ -960,6 +841,9 @@ def mostrar_detalle_item(item):
         dias_map_str = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
         s_dias = [dias_map_str[i] for i in item['dias_semana']]
         c2.markdown(f"**🔄 Días:** {', '.join(s_dias)}")
+    
+    if item.get('descripcion'):
+        st.markdown(f"**📝 Descripción:** {item['descripcion']}")
 
     # Acciones específicas
     st.divider()
@@ -1163,10 +1047,15 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
                     es_hoy = True
             
             if es_hoy:
+                hora_display = "Todo el día"
+                if not item.get('dia_completo') and item.get('hora_inicio') and item.get('hora_fin'):
+                    hora_display = f"{item['hora_inicio']} - {item['hora_fin']}"
                 clases_hoy.append({
-                    "hora": f"{item['hora_inicio']} - {item['hora_fin']}",
+                    "hora": hora_display,
                     "asignatura": item['titulo'],
-                    "aula": item['ubicacion'],
+                    "aula": item.get('ubicacion', ''),
+                    "descripcion": item.get('descripcion', ''),
+                    "color": item.get('color'),
                     "es_dinamico": True
                 })
         
@@ -1180,14 +1069,22 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
 
         if clases_hoy:
             for clase in clases_hoy:
-                # Estilo diferente para Universidad vs Dinamico
                 icon = "🎓" 
                 if clase.get('es_universidad'): icon = "🎓"
                 elif clase.get('es_futbol'): icon = "⚽"
                 elif "gym" in clase['asignatura'].lower(): icon = "🏋️"
                 else: icon = "📅"
                 
-                st.success(f"**{clase['hora']}**\n\n{icon} {clase['asignatura']}\n\n📍 {clase['aula']}")
+                # Usar color personalizado si existe
+                color_borde = clase.get('color', '#2E8B57')
+                desc_text = f"\n\n📝 {clase['descripcion']}" if clase.get('descripcion') else ""
+                aula_text = f"\n\n📍 {clase['aula']}" if clase.get('aula') else ""
+                
+                st.markdown(f"""
+                <div style='border-left: 4px solid {color_borde}; padding: 8px 12px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border-radius: 0 6px 6px 0;'>
+                    <strong>{clase['hora']}</strong><br>
+                    {icon} {clase['asignatura']}{aula_text.replace(chr(10), '<br>')}{desc_text.replace(chr(10), '<br>')}
+                </div>""", unsafe_allow_html=True)
         else:
             st.info("No hay clases ni eventos programados.")
     

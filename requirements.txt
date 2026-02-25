@@ -4,4 +4,3 @@ pandas
 pytz
 selenium
 webdriver-manager
-pandas
