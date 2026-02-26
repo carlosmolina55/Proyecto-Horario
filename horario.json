@@ -1,1 +1,18 @@
-[]
+[
+    {
+        "id": 1772105969,
+        "titulo": "VIAJE ITALIA PRIMOS",
+        "ubicacion": "",
+        "descripcion": "",
+        "color": "#1E90FF",
+        "tipo": "Evento",
+        "es_rutina": false,
+        "es_multidia": true,
+        "dias_semana": [],
+        "fecha": "2026-02-28",
+        "fecha_fin_evento": "2026-03-03",
+        "hora_inicio": null,
+        "hora_fin": null,
+        "dia_completo": true
+    }
+]
