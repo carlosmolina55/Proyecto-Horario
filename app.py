@@ -461,23 +461,24 @@ def render_vista_nuevo_horario():
         
         with c_conf:
             st.info("Tipo de Entrada")
-            tipo_entrada = st.radio("¿Qué vas a añadir?", ["📅 Evento Único", "🔄 Rutina Semanal"], key="type_schedule")
-            st.caption("Evento: Ocurre un día específico (ej. Cita médico).\nRutina: Se repite todas las semanas (ej. Gym).")
+            tipo_entrada = st.radio("¿Qué vas a añadir?", ["📅 Evento Único", "� Evento Multi-día", "�🔄 Rutina Semanal"], key="type_schedule")
+            st.caption("Evento: Ocurre un día específico (ej. Cita médico).\nMulti-día: Abarca varios días (ej. Viaje).\nRutina: Se repite todas las semanas (ej. Gym).")
             
             st.write("")
             st.markdown("**🎨 Color del evento**")
             color_evento = st.color_picker("Color", "#1E90FF", key="color_evento_new")
             
         with c_form:
-            titulo = st.text_input("Título del evento", placeholder="Ej: Cita médico, Gimnasio, Reunión...")
+            titulo = st.text_input("Título del evento", placeholder="Ej: Cita médico, Gimnasio, Reunión, Viaje Italia...")
             
             c1, c2 = st.columns(2)
             ubicacion = c1.text_input("📍 Ubicación", placeholder="Ej: Hospital, Gym, Online...")
             descripcion = c2.text_area("📝 Descripción (opcional)", placeholder="Detalles adicionales...", height=68)
             
-            # Lógica Rutina vs Evento
+            # Lógica Rutina vs Evento vs Multi-día
             dias_seleccionados = []
             fecha_evento = None
+            fecha_fin_evento = None
             
             if "Rutina" in tipo_entrada:
                 st.write("Selecciona los días:")
@@ -486,6 +487,12 @@ def render_vista_nuevo_horario():
                 for i, col in enumerate(cols_dias):
                     if col.checkbox(dias_abv[i], key=f"d_{i}"):
                         dias_seleccionados.append(i)
+            elif "Multi-día" in tipo_entrada:
+                cf1, cf2 = st.columns(2)
+                fecha_evento = cf1.date_input("📅 Fecha de inicio", get_madrid_date(), key="fecha_inicio_multi")
+                fecha_fin_evento = cf2.date_input("📅 Fecha de fin", get_madrid_date() + timedelta(days=2), key="fecha_fin_multi")
+                if fecha_fin_evento < fecha_evento:
+                    st.error("⚠️ La fecha de fin no puede ser anterior a la de inicio.")
             else:
                 fecha_evento = st.date_input("Fecha del Evento", get_madrid_date())
                 
@@ -494,7 +501,7 @@ def render_vista_nuevo_horario():
             ch1, ch2, ch3 = st.columns([1, 1, 1])
             h_inicio = ch1.time_input("Hora Inicio", datetime.strptime("10:00", "%H:%M").time())
             h_fin = ch2.time_input("Hora Fin", datetime.strptime("11:00", "%H:%M").time())
-            dia_completo = ch3.checkbox("📅 Todo el día", key="chk_all_day_event")
+            dia_completo = ch3.checkbox("📅 Todo el día", value=("Multi-día" in tipo_entrada), key="chk_all_day_event")
             
             st.write("")
             if st.button("💾 Guardar Evento", type="primary", use_container_width=True):
@@ -505,7 +512,12 @@ def render_vista_nuevo_horario():
                 if "Rutina" in tipo_entrada and not dias_seleccionados:
                     st.error("Selecciona al menos un día para la rutina.")
                     return
+                
+                if "Multi-día" in tipo_entrada and fecha_fin_evento and fecha_fin_evento < fecha_evento:
+                    st.error("⚠️ La fecha de fin no puede ser anterior a la de inicio.")
+                    return
 
+                es_multidia = "Multi-día" in tipo_entrada
                 nuevo_item = {
                     "id": int(get_madrid_time().timestamp()),
                     "titulo": titulo,
@@ -514,8 +526,10 @@ def render_vista_nuevo_horario():
                     "color": color_evento,
                     "tipo": "Rutina" if "Rutina" in tipo_entrada else "Evento",
                     "es_rutina": "Rutina" in tipo_entrada,
+                    "es_multidia": es_multidia,
                     "dias_semana": dias_seleccionados,
                     "fecha": str(fecha_evento) if fecha_evento else None,
+                    "fecha_fin_evento": str(fecha_fin_evento) if es_multidia and fecha_fin_evento else None,
                     "hora_inicio": str(h_inicio.strftime("%H:%M")) if not dia_completo else None,
                     "hora_fin": str(h_fin.strftime("%H:%M")) if not dia_completo else None,
                     "dia_completo": dia_completo
@@ -622,18 +636,31 @@ def render_vista_gestionar_todas(tareas):
                 with st.container(border=True):
                     c1, c2 = st.columns([5, 2])
                     
-                    titulo_h = f"🔄 {h['titulo']}" if h.get('es_rutina') else f"📅 {h['titulo']}"
+                    if h.get('es_multidia'):
+                        titulo_h = f"�️ {h['titulo']}"
+                    elif h.get('es_rutina'):
+                        titulo_h = f"🔄 {h['titulo']}"
+                    else:
+                        titulo_h = f"📅 {h['titulo']}"
                     
                     info_extra = ""
                     if h.get('es_rutina'):
                         dias_map = ["L", "M", "X", "J", "V", "S", "D"]
                         dias_str = ", ".join([dias_map[i] for i in h.get('dias_semana', [])])
                         info_extra = f" | Días: {dias_str}"
+                    elif h.get('es_multidia') and h.get('fecha_fin_evento'):
+                        info_extra = f" | 📅 {h.get('fecha')} → {h.get('fecha_fin_evento')}"
                     else:
                         info_extra = f" | Fecha: {h.get('fecha')}"
                     
-                    c1.markdown(f"**{titulo_h}** ({h['hora_inicio']} - {h['hora_fin']})")
-                    c1.caption(f"{h['ubicacion']}{info_extra}")
+                    hora_display = ""
+                    if h.get('hora_inicio') and h.get('hora_fin'):
+                        hora_display = f" ({h['hora_inicio']} - {h['hora_fin']})"
+                    elif h.get('dia_completo'):
+                        hora_display = " (Todo el día)"
+                    
+                    c1.markdown(f"**{titulo_h}**{hora_display}")
+                    c1.caption(f"{h.get('ubicacion', '')}{info_extra}")
                     
                     with c2:
                          ca_edit, ca_del = st.columns(2)
@@ -948,8 +975,21 @@ def main():
         
         st.divider()
         st.header("📅 Control de Fecha")
-        fecha_seleccionada = st.date_input("Fecha Base", get_madrid_date())
-        st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b')}**")
+        
+        # Botón HOY para volver al día presente
+        if st.button("📍 Ir a Hoy", use_container_width=True, type="primary"):
+            st.session_state["fecha_base_manual"] = get_madrid_date()
+            st.rerun()
+        
+        # Usar la fecha guardada en session_state si existe, si no usar la de hoy
+        fecha_default = st.session_state.get("fecha_base_manual", get_madrid_date())
+        fecha_seleccionada = st.date_input("Fecha Base", fecha_default, key="date_input_sidebar")
+        
+        # Guardar cambio manual del date_input
+        if fecha_seleccionada != fecha_default:
+            st.session_state["fecha_base_manual"] = fecha_seleccionada
+        
+        st.info(f"Mirando: **{fecha_seleccionada.strftime('%d %b %Y')}**")
         
         if st.button("🔄 Actualizar Horario"):
             with st.spinner("Actualizando Loyola y Sevilla FC..."):
@@ -1042,6 +1082,14 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
             if item.get('es_rutina'):
                 if dia_semana in item.get('dias_semana', []):
                     es_hoy = True
+            elif item.get('es_multidia') and item.get('fecha') and item.get('fecha_fin_evento'):
+                # Evento multi-día: comprobar si fecha_seleccionada está en el rango
+                try:
+                    f_inicio_m = datetime.strptime(item['fecha'], "%Y-%m-%d").date()
+                    f_fin_m = datetime.strptime(item['fecha_fin_evento'], "%Y-%m-%d").date()
+                    if f_inicio_m <= fecha_seleccionada <= f_fin_m:
+                        es_hoy = True
+                except: pass
             else:
                 if item.get('fecha') == fecha_sel_str:
                     es_hoy = True
@@ -1050,9 +1098,15 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
                 hora_display = "Todo el día"
                 if not item.get('dia_completo') and item.get('hora_inicio') and item.get('hora_fin'):
                     hora_display = f"{item['hora_inicio']} - {item['hora_fin']}"
+                
+                # Etiqueta multi-día
+                multidia_label = ""
+                if item.get('es_multidia') and item.get('fecha') and item.get('fecha_fin_evento'):
+                    multidia_label = f" (🗓️ {item['fecha']} → {item['fecha_fin_evento']})"
+                
                 clases_hoy.append({
                     "hora": hora_display,
-                    "asignatura": item['titulo'],
+                    "asignatura": item['titulo'] + multidia_label,
                     "aula": item.get('ubicacion', ''),
                     "descripcion": item.get('descripcion', ''),
                     "color": item.get('color'),
@@ -1378,17 +1432,33 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
                 es_este_dia = False
                 if item.get('es_rutina'):
                      if i in item.get('dias_semana', []): es_este_dia = True
+                elif item.get('es_multidia') and item.get('fecha') and item.get('fecha_fin_evento'):
+                     try:
+                         f_ini_w = datetime.strptime(item['fecha'], "%Y-%m-%d").date()
+                         f_fin_w = datetime.strptime(item['fecha_fin_evento'], "%Y-%m-%d").date()
+                         if f_ini_w <= dia_actual <= f_fin_w: es_este_dia = True
+                     except: pass
                 else:
                      if item.get('fecha') == dia_str: es_este_dia = True
                 
                 if es_este_dia:
+                    hora_sort_val = item.get('hora_inicio', '00:00') or '00:00'
+                    hora_display_w = "Todo el día"
+                    if not item.get('dia_completo') and item.get('hora_inicio') and item.get('hora_fin'):
+                        hora_display_w = f"{item['hora_inicio']} - {item['hora_fin']}"
+                    
+                    titulo_w = item['titulo']
+                    if item.get('es_multidia'):
+                        titulo_w = f"🗓️ {titulo_w}"
+                    
                     items_visuales.append({
                         "tipo": "Evento",
-                        "titulo": item['titulo'],
-                        "hora_sort": item['hora_inicio'],
-                        "hora": f"{item['hora_inicio']} - {item['hora_fin']}",
+                        "titulo": titulo_w,
+                        "hora_sort": hora_sort_val,
+                        "hora": hora_display_w,
                         "ubicacion": item.get('ubicacion'),
                         "es_rutina": item.get('es_rutina'),
+                        "es_multidia": item.get('es_multidia'),
                         "id": item.get('id'),
                         "dias_semana": item.get('dias_semana'),
                         "raw": item
@@ -1440,15 +1510,24 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
             # PINTAR BOTONES
             for item in items_visuales:
                 icon = "🗓️"
-                if item['tipo'] == 'Clase': icon = "🎓" # Clase
+                if item['tipo'] == 'Clase':
+                    # Mostrar la hora de inicio en vez de emoji de gorro
+                    hora_inicio_clase = item.get('hora_sort', '')
+                    icon = f"🕐{hora_inicio_clase}" if hora_inicio_clase else "🎓"
                 elif item['tipo'] == 'Futbol': icon = "⚽"
                 elif item['tipo'] == 'tarea': icon = item.get('msg_icon', "📝")
+                elif item.get('es_multidia'): icon = "🗓️"
                 elif item.get('es_rutina'): icon = "🔄"
                 
                 # Label corto (Icono primero para que funcione el recorte CSS en móvil)
-                time_lbl = item['hora_sort']
-                trunc_title = (item['titulo'][:10] + '..') if len(item['titulo']) > 10 else item['titulo']
-                label = f"{icon} {time_lbl} {trunc_title}"
+                if item['tipo'] == 'Clase':
+                    # Para clases: mostramos hora + titulo (sin duplicar hora)
+                    trunc_title = (item['titulo'][:10] + '..') if len(item['titulo']) > 10 else item['titulo']
+                    label = f"{icon} {trunc_title}"
+                else:
+                    time_lbl = item['hora_sort']
+                    trunc_title = (item['titulo'][:10] + '..') if len(item['titulo']) > 10 else item['titulo']
+                    label = f"{icon} {time_lbl} {trunc_title}"
                 
                 # Key unica
                 try:
@@ -1608,17 +1687,33 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                     es_este_dia_m = False
                     if item.get('es_rutina'):
                          if i in item.get('dias_semana', []): es_este_dia_m = True
+                    elif item.get('es_multidia') and item.get('fecha') and item.get('fecha_fin_evento'):
+                         try:
+                             f_ini_m2 = datetime.strptime(item['fecha'], "%Y-%m-%d").date()
+                             f_fin_m2 = datetime.strptime(item['fecha_fin_evento'], "%Y-%m-%d").date()
+                             if f_ini_m2 <= dia_actual <= f_fin_m2: es_este_dia_m = True
+                         except: pass
                     else:
                          if item.get('fecha') == dia_str: es_este_dia_m = True
                     
                     if es_este_dia_m:
+                        hora_sort_m = item.get('hora_inicio', '00:00') or '00:00'
+                        hora_display_m = "Todo el día"
+                        if not item.get('dia_completo') and item.get('hora_inicio') and item.get('hora_fin'):
+                            hora_display_m = f"{item['hora_inicio']} - {item['hora_fin']}"
+                        
+                        titulo_m = item['titulo']
+                        if item.get('es_multidia'):
+                            titulo_m = f"🗓️ {titulo_m}"
+                        
                         items_visuales.append({
                             "tipo": "Evento",
-                            "titulo": item['titulo'],
-                            "hora_sort": item['hora_inicio'],
-                            "hora": f"{item['hora_inicio']} - {item['hora_fin']}",
+                            "titulo": titulo_m,
+                            "hora_sort": hora_sort_m,
+                            "hora": hora_display_m,
                             "ubicacion": item.get('ubicacion'),
                             "es_rutina": item.get('es_rutina'),
+                            "es_multidia": item.get('es_multidia'),
                             "id": item.get('id'),
                             "dias_semana": item.get('dias_semana'),
                             "raw": item
@@ -1657,15 +1752,24 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
                 # RENDER DE BOTONES MINIMALISTAS
                 for item in items_visuales:
                     icon = "▫️"
-                    if item['tipo'] == 'Clase': icon = "🎓"
+                    if item['tipo'] == 'Clase':
+                        # Mostrar la hora de inicio en vez de emoji de gorro
+                        hora_inicio_clase_m = item.get('hora_sort', '')
+                        icon = f"🕐{hora_inicio_clase_m}" if hora_inicio_clase_m else "🎓"
                     elif item['tipo'] == 'Futbol': icon = "⚽"
                     elif item['tipo'] == 'tarea': icon = item.get('msg_icon', "📝")
+                    elif item.get('es_multidia'): icon = "🗓️"
                     elif item.get('es_rutina'): icon = "🔄"
                     
                     title_full = item['titulo']
                     # Truncar visualmente para el botón mensual
                     trunc_m = (title_full[:8] + '..') if len(title_full) > 8 else title_full
-                    label_m = f"{icon} {trunc_m}" # Ahora mostramos icono Y titulo truncado
+                    
+                    if item['tipo'] == 'Clase':
+                        # Para clases: mostramos hora + titulo (sin duplicar hora)
+                        label_m = f"{icon} {trunc_m}"
+                    else:
+                        label_m = f"{icon} {trunc_m}" # Ahora mostramos icono Y titulo truncado
                     
                     # Key única mensual
                     try: 
