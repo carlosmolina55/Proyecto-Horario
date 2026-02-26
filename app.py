@@ -1039,7 +1039,7 @@ def main():
         # Botón HOY para volver al día presente
         if st.button("Ir a Hoy", use_container_width=True, type="primary"):
             st.session_state["fecha_base_manual"] = get_madrid_date()
-            st.session_state["date_input_sidebar"] = get_madrid_date()
+            st.session_state.pop("date_input_sidebar", None)  # get_madrid_date()
             st.rerun()
         
         # Usar la fecha guardada en session_state si existe, si no usar la de hoy
@@ -1083,7 +1083,7 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
         if st.button("◀ Anterior", key="prev_day", use_container_width=True):
             new_d = fecha_seleccionada - timedelta(days=1)
             st.session_state["fecha_base_manual"] = new_d
-            st.session_state["date_input_sidebar"] = new_d
+            st.session_state.pop("date_input_sidebar", None)  # new_d
             st.rerun()
     with nav_c2:
         dias_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -1093,7 +1093,7 @@ def render_vista_diaria(tareas, fecha_seleccionada, horario_dinamico, horario_cl
         if st.button("Siguiente ▶", key="next_day", use_container_width=True):
             new_d = fecha_seleccionada + timedelta(days=1)
             st.session_state["fecha_base_manual"] = new_d
-            st.session_state["date_input_sidebar"] = new_d
+            st.session_state.pop("date_input_sidebar", None)  # new_d
             st.rerun()
     
     st.divider()
@@ -1436,7 +1436,7 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
         if st.button("◀ Semana anterior", key="prev_week", use_container_width=True):
             new_d = fecha_base - timedelta(weeks=1)
             st.session_state["fecha_base_manual"] = new_d
-            st.session_state["date_input_sidebar"] = new_d
+            st.session_state.pop("date_input_sidebar", None)  # new_d
             st.rerun()
     with nav_w2:
         st.markdown(f"<h3 style='text-align:center; margin:0;'>{start_of_week.day}/{start_of_week.month} — {end_of_week.day}/{end_of_week.month}/{end_of_week.year}</h3>", unsafe_allow_html=True)
@@ -1444,7 +1444,7 @@ def render_vista_semanal(tareas, fecha_base, horario_dinamico, horario_clases_sc
         if st.button("Semana siguiente ▶", key="next_week", use_container_width=True):
             new_d = fecha_base + timedelta(weeks=1)
             st.session_state["fecha_base_manual"] = new_d
-            st.session_state["date_input_sidebar"] = new_d
+            st.session_state.pop("date_input_sidebar", None)  # new_d
             st.rerun()
     
     cols = st.columns(7)
@@ -1691,7 +1691,7 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
             else:
                 new_date = fecha_base.replace(month=fecha_base.month - 1, day=1)
             st.session_state["fecha_base_manual"] = new_date
-            st.session_state["date_input_sidebar"] = new_date
+            st.session_state.pop("date_input_sidebar", None)  # new_date
             st.rerun()
     with nav_m2:
         st.markdown(f"<h3 style='text-align:center; margin:0;'>{nombre_mes} {fecha_base.year}</h3>", unsafe_allow_html=True)
@@ -1702,7 +1702,7 @@ def render_vista_mensual(tareas, fecha_base, horario_dinamico, horario_clases_sc
             else:
                 new_date = fecha_base.replace(month=fecha_base.month + 1, day=1)
             st.session_state["fecha_base_manual"] = new_date
-            st.session_state["date_input_sidebar"] = new_date
+            st.session_state.pop("date_input_sidebar", None)  # new_date
             st.rerun()
     
     calendar.setfirstweekday(calendar.MONDAY)
