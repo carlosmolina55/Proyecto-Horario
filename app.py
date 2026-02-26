@@ -126,7 +126,7 @@ def actualizar_horario_clases(force=False, driver=None):
     data_clases = []
     
     try:
-        url = "https://portales.uloyola.es/LoyolaHorario/horario.xhtml?curso=2025%2F26&tipo=M&titu=2168&campus=2&ncurso=1&grupo=A"
+        url = "https://portales.uloyola.es/LoyolaHorario/horario.xhtml?curso=2025%2F26&tipo=M&titu=2175&campus=2&ncurso=1&grupo=A"
         driver.get(url)
         
         # Esperar carga inicial
