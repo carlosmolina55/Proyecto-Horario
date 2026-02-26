@@ -75,69 +75,32 @@ COLORES_PREDETERMINADOS = {
 def render_selector_color(key_prefix, default_color="#1E90FF"):
     """Renderiza un selector de colores predeterminados con opción personalizada."""
     st.markdown("**🎨 Color**")
-    cols_colores = st.columns(5)
-    nombres = list(COLORES_PREDETERMINADOS.keys())
     
-    # Determinar el color por defecto
-    color_sel_nombre = None
-    for nombre, hex_val in COLORES_PREDETERMINADOS.items():
-        if hex_val.upper() == default_color.upper():
-            color_sel_nombre = nombre
-            break
-    
-    # Renderizar botones de color como cuadrados
-    for idx, (nombre, hex_val) in enumerate(COLORES_PREDETERMINADOS.items()):
-        col_idx = idx % 5
-        row = idx // 5
-        if row == 0:
-            with cols_colores[col_idx]:
-                is_selected = (color_sel_nombre == nombre) if color_sel_nombre else (idx == 0 and default_color == "#1E90FF")
-                border = "3px solid white" if is_selected else "1px solid #555"
-                if st.button("⬤", key=f"{key_prefix}_color_{nombre}", help=nombre, use_container_width=True):
-                    st.session_state[f"{key_prefix}_color_selected"] = hex_val
-                    st.rerun()
-    
-    cols_colores2 = st.columns(5)
-    for idx, (nombre, hex_val) in enumerate(COLORES_PREDETERMINADOS.items()):
-        if idx >= 5:
-            col_idx = idx % 5
-            with cols_colores2[col_idx]:
-                if st.button("⬤", key=f"{key_prefix}_color_{nombre}", help=nombre, use_container_width=True):
-                    st.session_state[f"{key_prefix}_color_selected"] = hex_val
-                    st.rerun()
-    
-    # Inyectar CSS para colorear los botones
-    css_rules = ""
-    for nombre, hex_val in COLORES_PREDETERMINADOS.items():
-        css_rules += f"""
-        button[kind="secondary"][aria-label="{nombre}"] {{ color: {hex_val} !important; font-size: 1.5em !important; }}
-        """
-    
-    # Mostrar los colores con HTML en lugar de botones
+    # Obtener el color actual del session_state o usar default
     color_actual = st.session_state.get(f"{key_prefix}_color_selected", default_color)
     
+    # Mostrar preview visual de todos los colores
     html_colors = "<div style='display:flex; flex-wrap:wrap; gap:6px; margin: 5px 0;'>"
     for nombre, hex_val in COLORES_PREDETERMINADOS.items():
         is_sel = (hex_val.upper() == color_actual.upper())
         border = "3px solid white" if is_sel else "2px solid #555"
         shadow = "0 0 8px " + hex_val if is_sel else "none"
-        html_colors += f"<div style='width:28px; height:28px; background:{hex_val}; border-radius:6px; border:{border}; cursor:pointer; box-shadow:{shadow};' title='{nombre}'></div>"
+        html_colors += f"<div style='width:28px; height:28px; background:{hex_val}; border-radius:6px; border:{border}; box-shadow:{shadow};' title='{nombre}'></div>"
     html_colors += "</div>"
     st.markdown(html_colors, unsafe_allow_html=True)
     
-    # Selector manual de color por si quiere uno personalizado
+    # Selector funcional con radio horizontal
     use_custom = st.checkbox("🎨 Color personalizado", key=f"{key_prefix}_use_custom")
     if use_custom:
         color_actual = st.color_picker("Elige color", color_actual, key=f"{key_prefix}_custom_picker")
         st.session_state[f"{key_prefix}_color_selected"] = color_actual
     else:
-        # Radio buttons para seleccionar
         nombre_default_idx = 0
         for idx, (nombre, hex_val) in enumerate(COLORES_PREDETERMINADOS.items()):
             if hex_val.upper() == color_actual.upper():
                 nombre_default_idx = idx
                 break
-        nombre_sel = st.radio("Selecciona color:", list(COLORES_PREDETERMINADOS.keys()), index=nombre_default_idx, key=f"{key_prefix}_radio_color", horizontal=True, label_visibility="collapsed")
+        nombre_sel = st.radio("Color:", list(COLORES_PREDETERMINADOS.keys()), index=nombre_default_idx, key=f"{key_prefix}_radio_color", horizontal=True, label_visibility="collapsed")
         color_actual = COLORES_PREDETERMINADOS[nombre_sel]
         st.session_state[f"{key_prefix}_color_selected"] = color_actual
     
